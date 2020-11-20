@@ -1,0 +1,104 @@
+---
+title: "Project2"
+author: "Diwei Zhu- dz1397"
+date: "11/17/2020"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,cache = T)
+```
+
+
+
+```{r}
+#base
+data<- read.csv("application_train.csv",header = T)
+score_data<-read.csv("applications_to_score.csv",header = T)
+#external
+previous_data<-read.csv("previous_application.csv",header = T)
+creditcard_data<- read.csv("credit_card_balance.csv",header = T)
+
+```
+
+
+
+```{r}
+
+colnames(applications_to_score)
+
+nrow(subset(data,data$SK_ID_CURR %in% score_data$SK_ID_CURR))#0
+
+nrow(subset(data,data$SK_ID_CURR %in% previous_data$SK_ID_CURR))#276461
+nrow(subset(data,score_data$SK_ID_CURR %in% previous_data$SK_ID_CURR))#277393
+nrow(subset(data,data$SK_ID_CURR %in% creditcard_data$SK_ID_CURR))#82574
+nrow(subset(data,score_data$SK_ID_CURR %in% creditcard_data$SK_ID_CURR))#82314
+
+data$SK_ID_CURR[[1869]] %in% previous_data$SK_ID_CURR
+data$SK_ID_CURR[[1869]]
+subset(data,data$SK_ID_CURR == 102285)
+subset(previous_data,previous_data$SK_ID_CURR == 102285)
+
+data$SK_ID_CURR[[9452]] %in% creditcard_data$SK_ID_CURR
+data$SK_ID_CURR[[9452]]
+subset(data,data$SK_ID_CURR == 111553)
+subset(creditcard_data,creditcard_data$SK_ID_CURR == 111553)
+
+
+previous_data$SK_ID_CURR[[9452]] %in% creditcard_data$SK_ID_CURR
+previous_data$SK_ID_CURR[[9452]]
+subset(previous_data,previous_data$SK_ID_CURR == 186257)
+subset(creditcard_data,creditcard_data$SK_ID_CURR == 186257)
+```
+
+
+```{r}
+```
+
+
+
+```{r}
+colnames(data)
+for ( i in colnames(data)){
+  print(paste("========",i,"========="))
+  if(is.character(data[[i]])){
+     print(unique(data[[i]]) )
+  }else if ( is.logical(data[[i]])){
+     print(table(data[[i]]))
+  }else
+  {
+    print(summary(data[[i]]))
+  }
+}
+
+```
+
+```{r}
+datacleaned<-data
+for ( i in colnames(datacleaned)){
+  datacleaned<-subset(datacleaned,!is.na(datacleaned[[i]])&datacleaned[[i]]!="")
+}
+```
+
+
+
+```{r}
+
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+

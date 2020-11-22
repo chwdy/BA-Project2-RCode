@@ -10,7 +10,6 @@ knitr::opts_chunk$set(echo = TRUE,cache = T)
 library(ggplot2)
 library(dataQualityR)
 library(magrittr)
-library(imputeMissings)
 ```
 
 
@@ -334,6 +333,23 @@ cor(my_num_data, use = "complete.obs", method = "pearson")
 
 
 ```
+
+Logistic Regression Modeling
+```{r}
+library(caret)
+outcomeName <- 'TARGET'
+predictorNames <- names(data.dummified.logistic)[names(data.dummified.logistic) != outcomeName]
+
+set.seed(1234)  # setting seed to reproduce results of random sampling
+split<-(.80)
+index <- createDataPartition(data.dummified.logistic$TARGET, p=split, list=FALSE)  # row indices for training data
+
+train.df <- data.dummified.logistic[index, ]  # model training data
+test.df  <- data.dummified.logistic[-index, ]   # test data
+
+
+```
+
 
 
 

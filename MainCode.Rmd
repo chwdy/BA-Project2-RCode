@@ -1,89 +1,326 @@
 ---
-title: "Project2"
-author: "Diwei Zhu- dz1397"
+title: "BA Project2"
+author: "Diwei Zhu, Gabriela Caballero, Kunyang Que, Ullas Srivastava, Yangxin Liu"
 date: "11/17/2020"
 output: html_document
 ---
 
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE,cache = T)
+library(ggplot2)
+library(dataQualityR)
+library(magrittr)
+library(imputeMissings)
 ```
 
 
 
+# Part I: Data Preprocessing
+
+
+
+## 1.1 Load Data
+
 ```{r}
-#base
+setwd("~/Documents/NYU Fall 2020/BA/Project 2/Data")
 data<- read.csv("application_train.csv",header = T)
 score_data<-read.csv("applications_to_score.csv",header = T)
-#external
-previous_data<-read.csv("previous_application.csv",header = T)
-creditcard_data<- read.csv("credit_card_balance.csv",header = T)
+dataLogisticModel<-data
 
 ```
 
 
+#Data Exploration
+```{r}
+# review the "balance" of the positive class we are about to predict
+table(data$TARGET)
+prop.table(table(data$TARGET))
+barplot(table(data$TARGET))
+
+#CHECK DATA QUALITY 
+checkDataQuality(data=data, 
+                 out.file.num ="~/Downloads/dq_loans_num.csv", 
+                 out.file.cat= "~/Downloads/dq_loans_cat.csv")
+dq_num<-read.csv("~/Downloads/dq_loans_cat.csv")
+View(dq_num)
+
+dq_cat<-read.csv("~/Downloads/dq_loans_cat.csv")
+View(dq_cat)
+```
+
+
+## 1.2 Summary
 
 ```{r}
-
-colnames(applications_to_score)
-
-nrow(subset(data,data$SK_ID_CURR %in% score_data$SK_ID_CURR))#0
-
-nrow(subset(data,data$SK_ID_CURR %in% previous_data$SK_ID_CURR))#276461
-nrow(subset(data,score_data$SK_ID_CURR %in% previous_data$SK_ID_CURR))#277393
-nrow(subset(data,data$SK_ID_CURR %in% creditcard_data$SK_ID_CURR))#82574
-nrow(subset(data,score_data$SK_ID_CURR %in% creditcard_data$SK_ID_CURR))#82314
-
-data$SK_ID_CURR[[1869]] %in% previous_data$SK_ID_CURR
-data$SK_ID_CURR[[1869]]
-subset(data,data$SK_ID_CURR == 102285)
-subset(previous_data,previous_data$SK_ID_CURR == 102285)
-
-data$SK_ID_CURR[[9452]] %in% creditcard_data$SK_ID_CURR
-data$SK_ID_CURR[[9452]]
-subset(data,data$SK_ID_CURR == 111553)
-subset(creditcard_data,creditcard_data$SK_ID_CURR == 111553)
-
-
-previous_data$SK_ID_CURR[[9452]] %in% creditcard_data$SK_ID_CURR
-previous_data$SK_ID_CURR[[9452]]
-subset(previous_data,previous_data$SK_ID_CURR == 186257)
-subset(creditcard_data,creditcard_data$SK_ID_CURR == 186257)
+colnames(score_data)
 ```
-
-
-```{r}
-```
-
-
 
 ```{r}
 colnames(data)
-for ( i in colnames(data)){
+for (i in colnames(data)) {
   print(paste("========",i,"========="))
-  if(is.character(data[[i]])){
+  if (is.character(data[[i]])) {
      print(unique(data[[i]]) )
-  }else if ( is.logical(data[[i]])){
+  } else if (is.logical(data[[i]])) {
      print(table(data[[i]]))
-  }else
-  {
+  } else {
     print(summary(data[[i]]))
   }
 }
 
 ```
 
+
+
+# Reducing Data Set
 ```{r}
-datacleaned<-data
-for ( i in colnames(datacleaned)){
-  datacleaned<-subset(datacleaned,!is.na(datacleaned[[i]])&datacleaned[[i]]!="")
-}
+index <- sample(1:nrow(data),(.1)*nrow(data))  # technique to reduce dataset
+data <- data [index, ]
+dataLogisticModel <- dataLogisticModel [index, ]
+```
+
+## 1.3 Data Cleaning
+
+### Removing the XNAs from CODE_GENDER
+```{r}
+data<-subset(data,!data$CODE_GENDER %in% "XNA")
+dataLogisticModel<-subset(dataLogisticModel,!dataLogisticModel$CODE_GENDER %in% "XNA")
+```
+
+### Calculating quartiles for AMT_INCOME_TOTAL
+```{r}
+Q <- quantile(data$AMT_INCOME_TOTAL, probs=c(.25, .75), na.rm = FALSE)
+iqr <- IQR(data$AMT_INCOME_TOTAL)
+up <- Q[2]+1.5*iqr # Upper Range
+low<- Q[1]-1.5*iqr # Lower Range
+# head(subset(data, data$AMT_INCOME_TOTAL < (Q[2]+1.5*iqr)))
+# There are 15052 rows with "outliers" income total amount above the 75% of the data, we only removed the biggest outlier and kept the rest
+data<-subset(data, data$AMT_INCOME_TOTAL!=117000000)
+dataLogisticModel<-subset(dataLogisticModel, dataLogisticModel$AMT_INCOME_TOTAL!=117000000)
+```
+
+### Removing 11 NAs from AMT_ANNUITY
+
+```{r}
+data<-subset(data, !is.na(data$AMT_ANNUITY))
+dataLogisticModel<-subset(dataLogisticModel, !is.na(dataLogisticModel$AMT_ANNUITY))
+```
+
+### Removing 262 NAs from AMT_GOODS_PRICE
+
+```{r}
+data<-subset(data, !is.na(data$AMT_GOODS_PRICE))
+dataLogisticModel<-subset(dataLogisticModel, !is.na(dataLogisticModel$AMT_GOODS_PRICE))
+```
+
+### Removing 962 rows with empty data "" from NAME_TYPE_SUITE
+
+```{r}
+data<-subset(data, !data$NAME_TYPE_SUITE=="")
+dataLogisticModel<-subset(dataLogisticModel, !dataLogisticModel$NAME_TYPE_SUITE=="")
+```
+
+### Changing the Unemployed and pensioned employed days to 0 to give less importance to the paramater but only for linear and logistic models, leaving it as it is for random forest
+
+```{r}
+dataLogisticModel$DAYS_EMPLOYED_POSITIVE<-ifelse(data$DAYS_EMPLOYED>0,1,0)
+dataLogisticModel$DAYS_EMPLOYED<- ifelse(dataLogisticModel$DAYS_EMPLOYED>0,0,dataLogisticModel$DAYS_EMPLOYED)
+#Creating a flag column for them
+
+```
+#For random forest
+```{r}
+#Handling positive numbers DAYS_EMPLOYED
+#Creating a flag column for them
+data$DAYS_EMPLOYED_POSITIVE<-ifelse(data$DAYS_EMPLOYED>0,1,0)
+#Replacing those values with Non numbers values
+data$DAYS_EMPLOYED<-ifelse(data$DAYS_EMPLOYED>0,NaN,data$DAYS_EMPLOYED)
+
+```
+
+
+### OWN_CAR_AGE NAs are because the person does not own a car and that's why we do not have info about the age of th car, leaving the NAs since they make sense. Code below that proves it.
+
+```{r}
+# for ( i in colnames(data)) {
+#   if (data$FLAG_OWN_CAR=='N'&&!is.na(data$OWN_CAR_AGE)) {
+#     loansNAswithoutcar=1+loansNAswithoutcar;
+#   } else {
+#     if (data$FLAG_OWN_CAR=='Y'&&is.na(data$OWN_CAR_AGE)) {
+#       loansNAWithCar=1+loansNAWithCar
+#     }
+#   }
+# }
+# loansNAswithoutcar
+```
+
+### Removing outliers from OBS_30_CNT_SOCIAL_CIRCLE, DEF_30_CNT_SOCIAL_CIRCLE, OBS_60_CNT_SOCIAL_CIRCLE, DEF_60_CNT_SOCIAL_CIRCLE
+
+```{r}
+data = data[!data$OBS_30_CNT_SOCIAL_CIRCLE > 47,]
+data = data[!data$DEF_30_CNT_SOCIAL_CIRCLE > 8,]
+data = data[!data$OBS_60_CNT_SOCIAL_CIRCLE > 47,]
+data = data[!data$DEF_60_CNT_SOCIAL_CIRCLE > 8,]
+
+
+dataLogisticModel = dataLogisticModel[!dataLogisticModel$OBS_30_CNT_SOCIAL_CIRCLE > 47,]
+dataLogisticModel = dataLogisticModel[!dataLogisticModel$DEF_30_CNT_SOCIAL_CIRCLE > 8,]
+dataLogisticModel = dataLogisticModel[!dataLogisticModel$OBS_60_CNT_SOCIAL_CIRCLE > 47,]
+dataLogisticModel = dataLogisticModel[!dataLogisticModel$DEF_60_CNT_SOCIAL_CIRCLE > 8,]
+
+```
+
+###  Deal with AMT_REQ_CREDIT_BUREAU
+
+```{r}
+# add the new column "AMT_REQ_CREDIT_BUREAU", which means the total Number of inquiries to Credit Bureau about the client one year before application
+data$AMT_REQ_CREDIT_BUREAU<-data$AMT_REQ_CREDIT_BUREAU_HOUR + 
+  data$AMT_REQ_CREDIT_BUREAU_DAY +
+  data$AMT_REQ_CREDIT_BUREAU_WEEK +
+  data$AMT_REQ_CREDIT_BUREAU_MON + 
+  data$AMT_REQ_CREDIT_BUREAU_QRT +
+  data$AMT_REQ_CREDIT_BUREAU_YEAR
+
+print(paste("======== AMT_REQ_CREDIT_BUREAU ========="))
+print(summary(data$AMT_REQ_CREDIT_BUREAU))
+
+
+dataLogisticModel$AMT_REQ_CREDIT_BUREAU<-dataLogisticModel$AMT_REQ_CREDIT_BUREAU_HOUR + 
+  dataLogisticModel$AMT_REQ_CREDIT_BUREAU_DAY +
+  dataLogisticModel$AMT_REQ_CREDIT_BUREAU_WEEK +
+  dataLogisticModel$AMT_REQ_CREDIT_BUREAU_MON + 
+  dataLogisticModel$AMT_REQ_CREDIT_BUREAU_QRT +
+ dataLogisticModel$AMT_REQ_CREDIT_BUREAU_YEAR
+
+
+dataLogisticModel<-mutate(dataLogisticModel, AMT_REQ_CREDIT_BUREAU=if_else(is.na(dataLogisticModel$AMT_REQ_CREDIT_BUREAU), 0, 
+                                     if_else(AMT_REQ_CREDIT_BUREAU >= 0 & AMT_REQ_CREDIT_BUREAU < 2, 1, 
+                                             if_else(AMT_REQ_CREDIT_BUREAU >= 2 & AMT_REQ_CREDIT_BUREAU < 4, 2, 3))))
+
+
+```
+
+```{r}
+# delete columns
+data<-subset(data, select = -AMT_REQ_CREDIT_BUREAU_HOUR)
+data<-subset(data, select = -AMT_REQ_CREDIT_BUREAU_DAY)
+data<-subset(data, select = -AMT_REQ_CREDIT_BUREAU_WEEK)
+data<-subset(data, select = -AMT_REQ_CREDIT_BUREAU_MON)
+data<-subset(data, select = -AMT_REQ_CREDIT_BUREAU_QRT)
+data<-subset(data, select = -AMT_REQ_CREDIT_BUREAU_YEAR)
+
+dataLogisticModel<-subset(dataLogisticModel, select = -AMT_REQ_CREDIT_BUREAU_HOUR)
+dataLogisticModel<-subset(dataLogisticModel, select = -AMT_REQ_CREDIT_BUREAU_DAY)
+dataLogisticModel<-subset(dataLogisticModel, select = -AMT_REQ_CREDIT_BUREAU_WEEK)
+dataLogisticModel<-subset(dataLogisticModel, select = -AMT_REQ_CREDIT_BUREAU_MON)
+dataLogisticModel<-subset(dataLogisticModel, select = -AMT_REQ_CREDIT_BUREAU_QRT)
+dataLogisticModel<-subset(dataLogisticModel, select = -AMT_REQ_CREDIT_BUREAU_YEAR)
+```
+
+
+# Deleting 1 NA from CNT_FAM_MEMBERS
+```{r}
+data<-subset(data, !data$CNT_FAM_MEMBERS=="NA")
+
+dataLogisticModel<-subset(dataLogisticModel, !data$CNT_FAM_MEMBERS=="NA")
+#table(data$CNT_FAM_MEMBERS)
+```
+
+
+# changing the OCCUPATION_TYPE blanks variables to "Others"'
+```{r}
+
+data$OCCUPATION_TYPE[data$OCCUPATION_TYPE==""]<- "Others"
+dataLogisticModel$OCCUPATION_TYPE[dataLogisticModel$OCCUPATION_TYPE==""]<- "Others"
+
+```
+
+
+# Cleaning outliers for HOUR_APPR_PROCESS_START
+```{r}
+Q <- quantile(data$HOUR_APPR_PROCESS_START, probs=c(.25, .75), na.rm = FALSE)
+
+iqr <- IQR(data$HOUR_APPR_PROCESS_START)
+
+up <-  Q[2]+1.5*iqr # Upper Range  
+
+low<- Q[1]-1.5*iqr # Lower Range
+
+data<- subset(data, data$HOUR_APPR_PROCESS_START > (Q[1] - 1.5*iqr) & data$HOUR_APPR_PROCESS_START < (Q[2]+1.5*iqr))
+
+dataLogisticModel<- subset(dataLogisticModel, dataLogisticModel$HOUR_APPR_PROCESS_START > (Q[1] - 1.5*iqr) & dataLogisticModel$HOUR_APPR_PROCESS_START < (Q[2]+1.5*iqr))
+
+```
+
+
+# Turning NA to averages for EXT_SOURCE_3
+```{r}
+
+data$EXT_SOURCE_3[data$EXT_SOURCE_3=="NA"]<- 0.51
+
+dataLogisticModel$EXT_SOURCE_3[dataLogisticModel$EXT_SOURCE_3=="NA"]<- 0.51
+```
+
+#changing the ORGANIZATION_TYPE XNA variables to "Unknown"'
+```{r}
+
+data$ORGANIZATION_TYPE[data$ORGANIZATION_TYPE=="XNA"]<- "Unknown"
+
+dataLogisticModel$ORGANIZATION_TYPE[dataLogisticModel$ORGANIZATION_TYPE=="XNA"]<- "Unknown"
+
+#table(data$ORGANIZATION_TYPE)
 ```
 
 
 
+Imputation the median for missing values on the apartment info and creating a flag for every imputation
 ```{r}
+# Drop the target from the training data random forest 
+outcomeName <- 'TARGET'
+imputationNames <- c("APARTMENTS_MODE","BASEMENTAREA_MODE","YEARS_BEGINEXPLUATATION_MODE","YEARS_BUILD_MODE","COMMONAREA_MODE","ELEVATORS_MODE","ENTRANCES_MODE","FLOORSMAX_MODE","FLOORSMIN_MODE","LANDAREA_MODE","LIVINGAPARTMENTS_MODE","LIVINGAREA_MODE","NONLIVINGAPARTMENTS_MODE","NONLIVINGAREA_MODE")
+imputationNames
+
+
+
+# Median imputation of missing values
+# impute(data[,imputationNames], object = NULL, method = "median/mode", flag = TRUE)
+data.frame(lapply(data[,imputationNames],function(x) {
+    if(is.numeric(x)) ifelse(is.na(x),median(x,na.rm=T),x) else x}))
+
+varswithmissings <- colSums(is.na(data[,imputationNames])) > 0
+      varswithmissings <- names(varswithmissings[varswithmissings])
+      dums <- data.frame(sapply(data[,varswithmissings], function(x) as.factor(ifelse(is.na(x),1,0))))
+      colnames(dums) <- paste0(colnames(dums),"_flag")
+      
+      
+data.frame(lapply(dataLogisticModel[,imputationNames],function(x) {
+    if(is.numeric(x)) ifelse(is.na(x),median(x,na.rm=T),x) else x}))
+
+varswithmissingsLM <- colSums(is.na(dataLogisticModel[,imputationNames])) > 0
+      varswithmissingsLM <- names(varswithmissingsLM[varswithmissingsLM])
+      dumsLM <- data.frame(sapply(dataLogisticModel[,varswithmissingsLM], function(x) as.factor(ifelse(is.na(x),1,0))))
+      colnames(dumsLM) <- paste0(colnames(dumsLM),"_flag")
+
+
+```
+Encoding Categorical Variables
+```{r}
+#Dummification of categorical variables logistic model
+
+dataLogisticModel$TARGET<-as.numeric(dataLogisticModel$TARGET)
+dataDummyLogistic <- dummyVars("~.",data=dataLogisticModel, fullRank=F)
+data.dummified.logistic <- as.data.frame(predict(dataDummy,dataLogisticModel))
+data.dummified.logistic$TARGET <- as.factor(data.dummified.logistic$TARGET)
+data.raw.dummy<-write.csv(data.dummified.logistic,file="data.dummified.logistic.csv")
+
+##Dummification of categorical variables tree model
+
+data$TARGET<-as.numeric(data$TARGET)
+dataDummy <- dummyVars("~.",data=data, fullRank=F)
+data.dummified <- as.data.frame(predict(dataDummy,data))
+data.dummified$TARGET <- as.factor(data.dummified$TARGET)
+data.raw.dummy<-write.csv(data.dummified,file="data.dummified.csv")
+
 
 
 
@@ -91,13 +328,12 @@ for ( i in colnames(datacleaned)){
 
 ```
 
+```{r}
+my_num_data <- data[, sapply(data, is.numeric)]
+cor(my_num_data, use = "complete.obs", method = "pearson")
 
 
-
-
-
-
-
+```
 
 
 

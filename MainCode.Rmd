@@ -310,9 +310,14 @@ Encoding Categorical Variables
 
 dataLogisticModel$TARGET<-as.numeric(dataLogisticModel$TARGET)
 dataDummyLogistic <- dummyVars("~.",data=dataLogisticModel, fullRank=F)
-data.dummified.logistic <- as.data.frame(predict(dataDummy,dataLogisticModel))
+data.dummified.logistic <- as.data.frame(predict(dataDummyLogistic,dataLogisticModel))
 data.dummified.logistic$TARGET <- as.factor(data.dummified.logistic$TARGET)
 data.raw.dummy<-write.csv(data.dummified.logistic,file="data.dummified.logistic.csv")
+
+#Fixing dummified variables' names
+names(data.dummified.logistic)<-make.names(names(data.dummified.logistic),unique = TRUE)
+# str(data.dummified.logistic)
+data.dummified.logistic
 
 ##Dummification of categorical variables tree model
 
@@ -321,6 +326,7 @@ dataDummy <- dummyVars("~.",data=data, fullRank=F)
 data.dummified <- as.data.frame(predict(dataDummy,data))
 data.dummified$TARGET <- as.factor(data.dummified$TARGET)
 data.raw.dummy<-write.csv(data.dummified,file="data.dummified.csv")
+data.dummified<-make.names(names(data.dummified),unique = TRUE)
 
 
 
@@ -338,19 +344,36 @@ cor(my_num_data, use = "complete.obs", method = "pearson")
 
 Logistic Regression Modeling
 ```{r}
-library(caret)
-outcomeName <- 'TARGET'
+outcomeName <- "TARGET"
 predictorNames <- names(data.dummified.logistic)[names(data.dummified.logistic) != outcomeName]
+predictorNames
 
 set.seed(1234)  # setting seed to reproduce results of random sampling
 split<-(.80)
-index <- createDataPartition(data.dummified.logistic$TARGET, p=split, list=FALSE)  # row indices for training data
+trainingRowIndex <- sample(1:nrow(data.dummified.logistic),(split)*nrow(data.dummified.logistic))  # row indices for training data
+trainingData <- data.dummified.logistic[trainingRowIndex, ]  # model training data
+testData  <- data.dummified.logistic[-trainingRowIndex, ]   # test data
 
-train.df <- data.dummified.logistic[index, ]  # model training data
-test.df  <- data.dummified.logistic[-index, ]   # test data
+#Model
+model <- as.formula(paste("TARGET~", paste(names(trainingData[-2]), 
+                                        collapse="+")))
+target.lm <- glm(model, data=train.df, family = binomial(link = "logit"))  # build the model
+# Review diagnostic measures
+summary(target.lm)
+
+# Step 3: Calculate prediction accuracy and error rates
+response<- ifelse(predict(target.lm, testData, type = "response")>.5, 1, 0) 
+class(response)
+confusionMatrix(table(response,testData$TARGET))
+
 
 
 ```
+
+```{r}
+
+```
+
 
 
 

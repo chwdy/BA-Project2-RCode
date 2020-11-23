@@ -451,5 +451,8 @@ confusionMatrix(table(response,testData$TARGET))
 
 
 
+std_data_pca=princomp(std_data,cor=TRUE)
+summary(df.pr,loadings=TRUE)
+```
 
 

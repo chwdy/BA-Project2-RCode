@@ -423,14 +423,30 @@ cor(my_num_data, use = "complete.obs", method = "pearson")
 ```
 
 ```{r}
-data_pca<-data.dummified.logistic
-#sapply(data_pca, class)
-std_data<-scale(data_pca[3:244])
-rownames(std_data)=data[[1]]
+outcomeName <- "TARGET"
+predictorNames <- names(data.dummified.logistic)[names(data.dummified.logistic) != outcomeName]
+predictorNames
 
-class(std_data)
-std_data=as.data.frame(std_data)
-class(std_data)
+set.seed(1234)  # setting seed to reproduce results of random sampling
+split<-(.80)
+trainingRowIndex <- sample(1:nrow(data.dummified.logistic),(split)*nrow(data.dummified.logistic))  # row indices for training data
+trainingData <- data.dummified.logistic[trainingRowIndex, ]  # model training data
+testData  <- data.dummified.logistic[-trainingRowIndex, ]   # test data
+
+#Model
+model <- as.formula(paste("TARGET~", paste(names(trainingData[-2]), 
+                                           collapse="+")))
+target.lm <- glm(model, data=train.df, family = binomial(link = "logit"))  # build the model
+# Review diagnostic measures
+summary(target.lm)
+
+# Step 3: Calculate prediction accuracy and error rates
+response<- ifelse(predict(target.lm, testData, type = "response")>.5, 1, 0) 
+class(response)
+confusionMatrix(table(response,testData$TARGET))
+```
+
+
 
 std_data_pca=princomp(std_data,cor=TRUE)
 summary(df.pr,loadings=TRUE)

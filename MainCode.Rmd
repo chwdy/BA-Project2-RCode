@@ -23,8 +23,8 @@ data_origin<-read.csv("application_train.csv",header = T)
 score_data_origin<-read.csv("applications_to_score.csv",header = T)
 
 #external
-#previous_data_origin<-read.csv("previous_application.csv",header = T)
-#creditcard_data_origin<-read.csv("credit_card_balance.csv",header = T)
+previous_data_origin<-read.csv("previous_application.csv",header = T)
+creditcard_data_origin<-read.csv("credit_card_balance.csv",header = T)
 ```
 
 ```{r}
@@ -32,8 +32,8 @@ data<-data_origin
 score_data<-data_origin
 dataLogisticModel<-data
 
-#previous_data<-previous_data_origin
-#creditcard_data<-creditcard_data_origin
+previous_data<-previous_data_origin
+creditcard_data<-creditcard_data_origin
 ```
 
 ### Data Exploration
@@ -74,6 +74,7 @@ for (i in colnames(data)) {
 }
 
 ```
+
 ### Reducing Data Set
 
 ```{r}
@@ -425,6 +426,59 @@ dataLogisticModel<-temp1 ## linear data
 data<-temp2 ## tree data
 ```
 
+### Drop column FLAG_MOBIL
+```{r}
+data<-subset(data, select = -FLAG_MOBIL)
+dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_MOBIL)
+```
+
+### Deal with column FLAG_DOCUMENT
+
+```{r}
+# Remove outliers
+data<-subset(data, FLAG_DOCUMENT_2 == 0)
+data<-subset(data, FLAG_DOCUMENT_4 == 0)
+data<-subset(data, FLAG_DOCUMENT_7 == 0)
+data<-subset(data, FLAG_DOCUMENT_10 == 0)
+data<-subset(data, FLAG_DOCUMENT_12 == 0)
+data<-subset(data, FLAG_DOCUMENT_17 == 0)
+data<-subset(data, FLAG_DOCUMENT_19 == 0)
+data<-subset(data, FLAG_DOCUMENT_20 == 0)
+data<-subset(data, FLAG_DOCUMENT_21 == 0)
+
+dataLogisticModel<-subset(dataLogisticModel, FLAG_DOCUMENT_2 == 0)
+dataLogisticModel<-subset(dataLogisticModel, FLAG_DOCUMENT_4 == 0)
+dataLogisticModel<-subset(dataLogisticModel, FLAG_DOCUMENT_7 == 0)
+dataLogisticModel<-subset(dataLogisticModel, FLAG_DOCUMENT_10 == 0)
+dataLogisticModel<-subset(dataLogisticModel, FLAG_DOCUMENT_12 == 0)
+dataLogisticModel<-subset(dataLogisticModel, FLAG_DOCUMENT_17 == 0)
+dataLogisticModel<-subset(dataLogisticModel, FLAG_DOCUMENT_19 == 0)
+dataLogisticModel<-subset(dataLogisticModel, FLAG_DOCUMENT_20 == 0)
+dataLogisticModel<-subset(dataLogisticModel, FLAG_DOCUMENT_21 == 0)
+
+# Drop Column
+
+data<-subset(data, select = -FLAG_DOCUMENT_2)
+data<-subset(data, select = -FLAG_DOCUMENT_4)
+data<-subset(data, select = -FLAG_DOCUMENT_7)
+data<-subset(data, select = -FLAG_DOCUMENT_10)
+data<-subset(data, select = -FLAG_DOCUMENT_12)
+data<-subset(data, select = -FLAG_DOCUMENT_17)
+data<-subset(data, select = -FLAG_DOCUMENT_19)
+data<-subset(data, select = -FLAG_DOCUMENT_20)
+data<-subset(data, select = -FLAG_DOCUMENT_21)
+
+dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_DOCUMENT_2)
+dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_DOCUMENT_4)
+dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_DOCUMENT_7)
+dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_DOCUMENT_10)
+dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_DOCUMENT_12)
+dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_DOCUMENT_17)
+dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_DOCUMENT_19)
+dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_DOCUMENT_20)
+dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_DOCUMENT_21)
+```
+
 
 ## 1.4 Encoding Categorical Variables
 ```{r}
@@ -454,9 +508,35 @@ my_num_data <- data[, sapply(data, is.numeric)]
 cor(my_num_data, use = "complete.obs", method = "pearson")
 ```
 
-## 
+==============================================pca=================================================
 
 
+
+```{r}
+data_pca<-data.dummified.logistic
+
+library(psych)
+data_pca<-data.matrix(data_pca)
+df.cor<-cor(data_pca[,-1])
+
+fa.parallel(data_pca[,-1], fa = "pc", n.iter = 100, show.legend = F, main = "Scree plot with parallel analysis")
+#sapply(data_pca, class)
+#std_data<-scale(data_pca[3:ncol(data_pca)])
+#rownames(std_data)=data[[1]]
+
+#std_data=as.data.frame(std_data)
+
+#std_data_pca=princomp(std_data,cor=TRUE)
+#summary(df.pr,loadings=TRUE)
+```
+
+```{r}
+library(psych)
+pc<-principal(data_pca[,-1], nfactors = 2, score = T, rotate = "varimax")
+summary(pc,loadings=TRUE)
+```
+
+==============================================pca=================================================
 
 
 ```{r}

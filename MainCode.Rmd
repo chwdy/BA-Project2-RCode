@@ -422,6 +422,31 @@ my_num_data <- data[, sapply(data, is.numeric)]
 cor(my_num_data, use = "complete.obs", method = "pearson")
 ```
 
+```{r}
+outcomeName <- "TARGET"
+predictorNames <- names(data.dummified.logistic)[names(data.dummified.logistic) != outcomeName]
+predictorNames
+
+set.seed(1234)  # setting seed to reproduce results of random sampling
+split<-(.80)
+trainingRowIndex <- sample(1:nrow(data.dummified.logistic),(split)*nrow(data.dummified.logistic))  # row indices for training data
+trainingData <- data.dummified.logistic[trainingRowIndex, ]  # model training data
+testData  <- data.dummified.logistic[-trainingRowIndex, ]   # test data
+
+#Model
+model <- as.formula(paste("TARGET~", paste(names(trainingData[-2]), 
+                                           collapse="+")))
+target.lm <- glm(model, data=train.df, family = binomial(link = "logit"))  # build the model
+# Review diagnostic measures
+summary(target.lm)
+
+# Step 3: Calculate prediction accuracy and error rates
+response<- ifelse(predict(target.lm, testData, type = "response")>.5, 1, 0) 
+class(response)
+confusionMatrix(table(response,testData$TARGET))
+```
+
+
 
 
 

@@ -19,10 +19,14 @@ library(caret)
 ## 1.1 Load Data
 
 ```{r}
-setwd("/Users/kunyangque/Documents/NYUTandon/course/Business Analysis/BA_Assignment/Project2/data")
+
 data<- read.csv("application_train.csv",header = T)
 score_data<-read.csv("applications_to_score.csv",header = T)
 dataLogisticModel<-data
+
+#external
+previous_data<-read.csv("previous_application.csv",header = T)
+creditcard_data<- read.csv("credit_card_balance.csv",header = T)
 
 ```
 ### Data Exploration
@@ -34,12 +38,12 @@ barplot(table(data$TARGET))
 
 #CHECK DATA QUALITY 
 checkDataQuality(data=data, 
-                 out.file.num ="~/Downloads/dq_loans_num.csv", 
-                 out.file.cat= "~/Downloads/dq_loans_cat.csv")
-dq_num<-read.csv("~/Downloads/dq_loans_cat.csv")
+                 out.file.num ="dq_loans_num.csv", 
+                 out.file.cat= "dq_loans_cat.csv")
+dq_num<-read.csv("dq_loans_cat.csv")
 View(dq_num)
 
-dq_cat<-read.csv("~/Downloads/dq_loans_cat.csv")
+dq_cat<-read.csv("dq_loans_cat.csv")
 View(dq_cat)
 ```
 
@@ -264,34 +268,135 @@ dataLogisticModel$ORGANIZATION_TYPE[dataLogisticModel$ORGANIZATION_TYPE=="XNA"]<
 ```
 
 
-### Imputation the median for missing values on the apartment info and creating a flag for every imputation
-```{r}
-# Drop the target from the training data random forest 
-outcomeName <- 'TARGET'
-imputationNames <- c("APARTMENTS_MODE","BASEMENTAREA_MODE","YEARS_BEGINEXPLUATATION_MODE","YEARS_BUILD_MODE","COMMONAREA_MODE","ELEVATORS_MODE","ENTRANCES_MODE","FLOORSMAX_MODE","FLOORSMIN_MODE","LANDAREA_MODE","LIVINGAPARTMENTS_MODE","LIVINGAREA_MODE","NONLIVINGAPARTMENTS_MODE","NONLIVINGAREA_MODE")
-imputationNames
+### data cleaning for building info
+```{r new}
+# data cleaning
 
-# Median imputation of missing values
-# impute(data[,imputationNames], object = NULL, method = "median/mode", flag = TRUE)
-data.frame(lapply(data[,imputationNames],function(x) {
-    if(is.numeric(x)) ifelse(is.na(x),median(x,na.rm=T),x) else x}))
+temp<- data ##input
+## removing avg & MEDI
+temp<-temp[,-which(names(temp) %in% c("APARTMENTS_AVG","BASEMENTAREA_AVG","YEARS_BEGINEXPLUATATION_AVG","YEARS_BUILD_AVG","COMMONAREA_AVG","ELEVATORS_AVG","ENTRANCES_AVG","FLOORSMAX_AVG","FLOORSMIN_AVG","LANDAREA_AVG","LIVINGAPARTMENTS_AVG","LIVINGAREA_AVG","NONLIVINGAPARTMENTS_AVG","NONLIVINGAREA_AVG","APARTMENTS_MEDI","BASEMENTAREA_MEDI","YEARS_BEGINEXPLUATATION_MEDI","YEARS_BUILD_MEDI","COMMONAREA_MEDI","ELEVATORS_MEDI","ENTRANCES_MEDI","FLOORSMAX_MEDI","FLOORSMIN_MEDI","LANDAREA_MEDI","LIVINGAPARTMENTS_MEDI","LIVINGAREA_MEDI","NONLIVINGAPARTMENTS_MEDI","NONLIVINGAREA_MEDI"))]
+data<-temp ##output
 
-varswithmissings <- colSums(is.na(data[,imputationNames])) > 0
-      varswithmissings <- names(varswithmissings[varswithmissings])
-      dums <- data.frame(sapply(data[,varswithmissings], function(x) as.factor(ifelse(is.na(x),1,0))))
-      colnames(dums) <- paste0(colnames(dums),"_flag")
-      
-      
-data.frame(lapply(dataLogisticModel[,imputationNames],function(x) {
-    if(is.numeric(x)) ifelse(is.na(x),median(x,na.rm=T),x) else x}))
+temp<- dataLogisticModel ##input
+## removing avg & MEDI
+temp<-temp[,-which(names(temp) %in% c("APARTMENTS_AVG","BASEMENTAREA_AVG","YEARS_BEGINEXPLUATATION_AVG","YEARS_BUILD_AVG","COMMONAREA_AVG","ELEVATORS_AVG","ENTRANCES_AVG","FLOORSMAX_AVG","FLOORSMIN_AVG","LANDAREA_AVG","LIVINGAPARTMENTS_AVG","LIVINGAREA_AVG","NONLIVINGAPARTMENTS_AVG","NONLIVINGAREA_AVG","APARTMENTS_MEDI","BASEMENTAREA_MEDI","YEARS_BEGINEXPLUATATION_MEDI","YEARS_BUILD_MEDI","COMMONAREA_MEDI","ELEVATORS_MEDI","ENTRANCES_MEDI","FLOORSMAX_MEDI","FLOORSMIN_MEDI","LANDAREA_MEDI","LIVINGAPARTMENTS_MEDI","LIVINGAREA_MEDI","NONLIVINGAPARTMENTS_MEDI","NONLIVINGAREA_MEDI"))]
+dataLogisticModel<-temp ##output
 
-varswithmissingsLM <- colSums(is.na(dataLogisticModel[,imputationNames])) > 0
-      varswithmissingsLM <- names(varswithmissingsLM[varswithmissingsLM])
-      dumsLM <- data.frame(sapply(dataLogisticModel[,varswithmissingsLM], function(x) as.factor(ifelse(is.na(x),1,0))))
-      colnames(dumsLM) <- paste0(colnames(dumsLM),"_flag")
+```
+
+## feature engineering for building info
+```{r warning=FALSE}
+# feature engineering
+
+
+
+temp1 <- dataLogisticModel ##linear data
+temp2 <- data ##tree data
+library(parallel)
+qrtEncode <- function(x,dat) {
+  if (is.na(x)) {
+    return("NA")
+  }
+    if (x < dat[1]) {
+      return("0-25%")
+    } 
+  if (x < dat[2]) {
+      return("25-50%")
+    } 
+  if (x < dat[3]) {
+      return("50-75%")
+    } 
+      return("75-100%")
+}
+ZeroEncode <- function(x, dat) {
+  if (is.na(x)) {
+    return("NA")
+  }
+  if (x == 0) {
+    return("ZERO")
+  }
+  return("OVER ZERO")
+}
+#multithread
+
+clus <- makeCluster(detectCores())
+clusterExport(clus,"qrtEncode")
+clusterExport(clus,"ZeroEncode")
+
+
+temp1$APARTMENTS_MODE_FLAG <-  ifelse(is.na(temp1$APARTMENTS_MODE), 0, 1)#NA-0,else-1
+temp1$APARTMENTS_MODE<-ifelse(is.na(temp1$APARTMENTS_MODE), 0, temp1$APARTMENTS_MODE)
+temp2$APARTMENTS_MODE<-parLapply(clus,X=temp2$APARTMENTS_MODE,fun=qrtEncode,dat=quantile(temp2$APARTMENTS_MODE, prob = c(0.25,0.5,0.75),na.rm = T))
+temp2$APARTMENTS_MODE<-unlist(temp2$APARTMENTS_MODE)
+
+temp1$BASEMENTAREA_MODE_FLAG <-  ifelse(is.na(temp1$BASEMENTAREA_MODE), 0, 1)#NA-0,else-1
+temp1$BASEMENTAREA_MODE<-ifelse(is.na(temp1$BASEMENTAREA_MODE), 0, temp1$BASEMENTAREA_MODE)
+temp2$BASEMENTAREA_MODE<-parLapply(clus,X=temp2$BASEMENTAREA_MODE,fun=qrtEncode,dat=quantile(temp2$BASEMENTAREA_MODE, prob = c(0.25,0.5,0.75),na.rm = T))
+temp2$BASEMENTAREA_MODE<-unlist(temp2$BASEMENTAREA_MODE)
+
+temp1$YEARS_BEGINEXPLUATATION_MODE <-ifelse(is.na(temp1$YEARS_BEGINEXPLUATATION_MODE), 0, 1)#have-1,NA-0,overwrite
+temp2$YEARS_BEGINEXPLUATATION_MODE <-ifelse(is.na(temp2$YEARS_BEGINEXPLUATATION_MODE), 0, 1)#have-1,NA-0,overwrite
+
+temp1$YEARS_BUILD_MODE_FLAG <-  ifelse(is.na(temp1$YEARS_BUILD_MODE), 0, 1)#NA-0,else-1
+temp1$YEARS_BUILD_MODE<-ifelse(is.na(temp1$YEARS_BUILD_MODE), 0, temp1$YEARS_BUILD_MODE)
+temp2$YEARS_BUILD_MODE<-parLapply(clus,X=temp2$YEARS_BUILD_MODE,fun=qrtEncode,dat=quantile(temp2$YEARS_BUILD_MODE, prob = c(0.25,0.5,0.75),na.rm = T))
+temp2$YEARS_BUILD_MODE<-unlist(temp2$YEARS_BUILD_MODE)
+
+temp1$COMMONAREA_MODE <-ifelse(is.na(temp1$COMMONAREA_MODE), 0, 1)#have-1,NA-0,overwrite
+temp2$COMMONAREA_MODE <-ifelse(is.na(temp2$COMMONAREA_MODE), 0, 1)#have-1,NA-0,overwrite
+
+temp1$ELEVATORS_MODE_FLAG <-  ifelse(is.na(temp1$ELEVATORS_MODE), 0, 1)#NA-0,else-1
+temp1$ELEVATORS_MODE<-ifelse(is.na(temp1$ELEVATORS_MODE), 0, temp1$ELEVATORS_MODE)
+temp2$ELEVATORS_MODE<-parLapply(clus,X=temp2$ELEVATORS_MODE,fun=ZeroEncode,dat=quantile(temp2$ELEVATORS_MODE, prob = c(0.25,0.5,0.75),na.rm = T))
+temp2$ELEVATORS_MODE<-unlist(temp2$ELEVATORS_MODE)
+
+temp1$ENTRANCES_MODE_FLAG <-  ifelse(is.na(temp1$ENTRANCES_MODE), 0, 1)#NA-0,else-1
+temp1$ENTRANCES_MODE<-ifelse(is.na(temp1$ENTRANCES_MODE), 0, temp1$ENTRANCES_MODE)
+temp2$ENTRANCES_MODE<-parLapply(clus,X=temp2$ENTRANCES_MODE,fun=qrtEncode,dat=quantile(temp2$ENTRANCES_MODE, prob = c(0.25,0.5,0.75),na.rm = T))
+temp2$ENTRANCES_MODE<-unlist(temp2$ENTRANCES_MODE)
+
+temp1$FLOORSMAX_MODE_FLAG <-  ifelse(is.na(temp1$FLOORSMAX_MODE), 0, 1)#NA-0,else-1
+temp1$FLOORSMAX_MODE<-ifelse(is.na(temp1$FLOORSMAX_MODE), 0, temp1$FLOORSMAX_MODE)
+temp2$FLOORSMAX_MODE<-parLapply(clus,X=temp2$FLOORSMAX_MODE,fun=qrtEncode,dat=quantile(temp2$FLOORSMAX_MODE, prob = c(0.25,0.5,0.75),na.rm = T))
+temp2$FLOORSMAX_MODE<-unlist(temp2$FLOORSMAX_MODE)
+
+temp1$FLOORSMIN_MODE_FLAG <-  ifelse(is.na(temp1$FLOORSMIN_MODE), 0, 1)#NA-0,else-1
+temp1$FLOORSMIN_MODE<-ifelse(is.na(temp1$FLOORSMIN_MODE), 0, temp1$FLOORSMIN_MODE)
+temp2$FLOORSMIN_MODE<-parLapply(clus,X=temp2$FLOORSMIN_MODE,fun=qrtEncode,dat=quantile(temp2$FLOORSMIN_MODE, prob = c(0.25,0.5,0.75),na.rm = T))
+temp2$FLOORSMIN_MODE<-unlist(temp2$FLOORSMIN_MODE)
+
+temp1$LANDAREA_MODE_FLAG <-  ifelse(is.na(temp1$LANDAREA_MODE), 0, 1)#NA-0,else-1
+temp1$LANDAREA_MODE<-ifelse(is.na(temp1$LANDAREA_MODE), 0, temp1$LANDAREA_MODE)
+temp2$LANDAREA_MODE<-parLapply(clus,X=temp2$LANDAREA_MODE,fun=qrtEncode,dat=quantile(temp2$LANDAREA_MODE, prob = c(0.25,0.5,0.75),na.rm = T))
+temp2$LANDAREA_MODE<-unlist(temp2$LANDAREA_MODE)
+
+temp1$LIVINGAPARTMENTS_MODE_FLAG <-  ifelse(is.na(temp1$LIVINGAPARTMENTS_MODE), 0, 1)#NA-0,else-1
+temp1$LIVINGAPARTMENTS_MODE<-ifelse(is.na(temp1$LIVINGAPARTMENTS_MODE), 0, temp1$LIVINGAPARTMENTS_MODE)
+temp2$LIVINGAPARTMENTS_MODE<-parLapply(clus,X=temp2$LIVINGAPARTMENTS_MODE,fun=qrtEncode,dat=quantile(temp2$LIVINGAPARTMENTS_MODE, prob = c(0.25,0.5,0.75),na.rm = T))
+temp2$LIVINGAPARTMENTS_MODE<-unlist(temp2$LIVINGAPARTMENTS_MODE)
+
+temp1$LIVINGAREA_MODE_FLAG <-  ifelse(is.na(temp1$LIVINGAREA_MODE), 0, 1)#NA-0,else-1
+temp1$LIVINGAREA_MODE<-ifelse(is.na(temp1$LIVINGAREA_MODE), 0, temp1$LIVINGAREA_MODE)
+temp2$LIVINGAREA_MODE<-parLapply(clus,X=temp2$LIVINGAREA_MODE,fun=qrtEncode,dat=quantile(temp2$LIVINGAREA_MODE, prob = c(0.25,0.5,0.75),na.rm = T))
+temp2$LIVINGAREA_MODE<-unlist(temp2$LIVINGAREA_MODE)
+
+temp1$NONLIVINGAPARTMENTS_MODE <-ifelse(is.na(temp1$NONLIVINGAPARTMENTS_MODE), 0, 1)#have-1,NA-0,overwrite
+temp2$NONLIVINGAPARTMENTS_MODE <-ifelse(is.na(temp2$NONLIVINGAPARTMENTS_MODE), 0, 1)#have-1,NA-0,overwrite
+
+
+temp1$NONLIVINGAREA_MODE_FLAG <-  ifelse(is.na(temp1$NONLIVINGAREA_MODE), 0, 1)#NA-0,else-1
+temp1$NONLIVINGAREA_MODE<-ifelse(is.na(temp1$NONLIVINGAREA_MODE), 0, temp1$NONLIVINGAREA_MODE)
+temp2$NONLIVINGAREA_MODE<-parLapply(clus,X=temp2$NONLIVINGAREA_MODE,fun=ZeroEncode,dat=quantile(temp2$NONLIVINGAREA_MODE, prob = c(0.25,0.5,0.75),na.rm = T))
+temp2$NONLIVINGAREA_MODE<-unlist(temp2$NONLIVINGAREA_MODE)
+
+stopCluster(clus)
+#output
+dataLogisticModel<-temp1 ## linear data
+data<-temp2 ## tree data
 
 
 ```
+
 
 ## 1.4 Encoding Categorical Variables
 ```{r}

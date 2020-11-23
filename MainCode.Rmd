@@ -14,24 +14,18 @@ library(dplyr)
 library(caret)
 ```
 
-
-
 # Part I: Data Preprocessing
-
-
 
 ## 1.1 Load Data
 
 ```{r}
-setwd("~/Documents/NYU Fall 2020/BA/Project 2/Data")
+setwd("/Users/kunyangque/Documents/NYUTandon/course/Business Analysis/BA_Assignment/Project2/data")
 data<- read.csv("application_train.csv",header = T)
 score_data<-read.csv("applications_to_score.csv",header = T)
 dataLogisticModel<-data
 
 ```
-
-
-#Data Exploration
+### Data Exploration
 ```{r}
 # review the "balance" of the positive class we are about to predict
 table(data$TARGET)
@@ -70,10 +64,8 @@ for (i in colnames(data)) {
 }
 
 ```
+### Reducing Data Set
 
-
-
-# Reducing Data Set
 ```{r}
 index <- sample(1:nrow(data),(.1)*nrow(data))  # technique to reduce dataset
 data <- data [index, ]
@@ -127,9 +119,10 @@ dataLogisticModel<-subset(dataLogisticModel, !dataLogisticModel$NAME_TYPE_SUITE=
 dataLogisticModel$DAYS_EMPLOYED_POSITIVE<-ifelse(data$DAYS_EMPLOYED>0,1,0)
 dataLogisticModel$DAYS_EMPLOYED<- ifelse(dataLogisticModel$DAYS_EMPLOYED>0,0,dataLogisticModel$DAYS_EMPLOYED)
 #Creating a flag column for them
-
 ```
-#For random forest
+
+#### For random forest
+
 ```{r}
 #Handling positive numbers DAYS_EMPLOYED
 #Creating a flag column for them
@@ -138,7 +131,6 @@ data$DAYS_EMPLOYED_POSITIVE<-ifelse(data$DAYS_EMPLOYED>0,1,0)
 data$DAYS_EMPLOYED<-ifelse(data$DAYS_EMPLOYED>0,NaN,data$DAYS_EMPLOYED)
 
 ```
-
 
 ### OWN_CAR_AGE NAs are because the person does not own a car and that's why we do not have info about the age of th car, leaving the NAs since they make sense. Code below that proves it.
 
@@ -168,7 +160,6 @@ dataLogisticModel = dataLogisticModel[!dataLogisticModel$OBS_30_CNT_SOCIAL_CIRCL
 dataLogisticModel = dataLogisticModel[!dataLogisticModel$DEF_30_CNT_SOCIAL_CIRCLE > 8,]
 dataLogisticModel = dataLogisticModel[!dataLogisticModel$OBS_60_CNT_SOCIAL_CIRCLE > 47,]
 dataLogisticModel = dataLogisticModel[!dataLogisticModel$DEF_60_CNT_SOCIAL_CIRCLE > 8,]
-
 ```
 
 ###  Deal with AMT_REQ_CREDIT_BUREAU
@@ -185,7 +176,6 @@ data$AMT_REQ_CREDIT_BUREAU<-data$AMT_REQ_CREDIT_BUREAU_HOUR +
 print(paste("======== AMT_REQ_CREDIT_BUREAU ========="))
 print(summary(data$AMT_REQ_CREDIT_BUREAU))
 
-
 dataLogisticModel$AMT_REQ_CREDIT_BUREAU<-dataLogisticModel$AMT_REQ_CREDIT_BUREAU_HOUR + 
   dataLogisticModel$AMT_REQ_CREDIT_BUREAU_DAY +
   dataLogisticModel$AMT_REQ_CREDIT_BUREAU_WEEK +
@@ -197,7 +187,6 @@ dataLogisticModel$AMT_REQ_CREDIT_BUREAU<-dataLogisticModel$AMT_REQ_CREDIT_BUREAU
 dataLogisticModel<-mutate(dataLogisticModel, AMT_REQ_CREDIT_BUREAU=if_else(is.na(dataLogisticModel$AMT_REQ_CREDIT_BUREAU), 0, 
                                      if_else(AMT_REQ_CREDIT_BUREAU >= 0 & AMT_REQ_CREDIT_BUREAU < 2, 1, 
                                              if_else(AMT_REQ_CREDIT_BUREAU >= 2 & AMT_REQ_CREDIT_BUREAU < 4, 2, 3))))
-
 
 ```
 
@@ -219,7 +208,8 @@ dataLogisticModel<-subset(dataLogisticModel, select = -AMT_REQ_CREDIT_BUREAU_YEA
 ```
 
 
-# Deleting 1 NA from CNT_FAM_MEMBERS
+### Deleting 1 NA from CNT_FAM_MEMBERS
+
 ```{r}
 data<-subset(data, !data$CNT_FAM_MEMBERS=="NA")
 
@@ -228,7 +218,8 @@ dataLogisticModel<-subset(dataLogisticModel, !data$CNT_FAM_MEMBERS=="NA")
 ```
 
 
-# changing the OCCUPATION_TYPE blanks variables to "Others"'
+### Changing the OCCUPATION_TYPE blanks variables to "Others"'
+
 ```{r}
 
 data$OCCUPATION_TYPE[data$OCCUPATION_TYPE==""]<- "Others"
@@ -237,7 +228,7 @@ dataLogisticModel$OCCUPATION_TYPE[dataLogisticModel$OCCUPATION_TYPE==""]<- "Othe
 ```
 
 
-# Cleaning outliers for HOUR_APPR_PROCESS_START
+#### Cleaning outliers for HOUR_APPR_PROCESS_START
 ```{r}
 Q <- quantile(data$HOUR_APPR_PROCESS_START, probs=c(.25, .75), na.rm = FALSE)
 
@@ -254,7 +245,7 @@ dataLogisticModel<- subset(dataLogisticModel, dataLogisticModel$HOUR_APPR_PROCES
 ```
 
 
-# Turning NA to averages for EXT_SOURCE_3
+### Turning NA to averages for EXT_SOURCE_3
 ```{r}
 
 data$EXT_SOURCE_3[data$EXT_SOURCE_3=="NA"]<- 0.51
@@ -262,7 +253,7 @@ data$EXT_SOURCE_3[data$EXT_SOURCE_3=="NA"]<- 0.51
 dataLogisticModel$EXT_SOURCE_3[dataLogisticModel$EXT_SOURCE_3=="NA"]<- 0.51
 ```
 
-#changing the ORGANIZATION_TYPE XNA variables to "Unknown"'
+### Changing the ORGANIZATION_TYPE XNA variables to "Unknown"'
 ```{r}
 
 data$ORGANIZATION_TYPE[data$ORGANIZATION_TYPE=="XNA"]<- "Unknown"
@@ -273,15 +264,12 @@ dataLogisticModel$ORGANIZATION_TYPE[dataLogisticModel$ORGANIZATION_TYPE=="XNA"]<
 ```
 
 
-
-Imputation the median for missing values on the apartment info and creating a flag for every imputation
+### Imputation the median for missing values on the apartment info and creating a flag for every imputation
 ```{r}
 # Drop the target from the training data random forest 
 outcomeName <- 'TARGET'
 imputationNames <- c("APARTMENTS_MODE","BASEMENTAREA_MODE","YEARS_BEGINEXPLUATATION_MODE","YEARS_BUILD_MODE","COMMONAREA_MODE","ELEVATORS_MODE","ENTRANCES_MODE","FLOORSMAX_MODE","FLOORSMIN_MODE","LANDAREA_MODE","LIVINGAPARTMENTS_MODE","LIVINGAREA_MODE","NONLIVINGAPARTMENTS_MODE","NONLIVINGAREA_MODE")
 imputationNames
-
-
 
 # Median imputation of missing values
 # impute(data[,imputationNames], object = NULL, method = "median/mode", flag = TRUE)
@@ -304,7 +292,8 @@ varswithmissingsLM <- colSums(is.na(dataLogisticModel[,imputationNames])) > 0
 
 
 ```
-Encoding Categorical Variables
+
+## 1.4 Encoding Categorical Variables
 ```{r}
 #Dummification of categorical variables logistic model
 
@@ -328,18 +317,11 @@ data.dummified$TARGET <- as.factor(data.dummified$TARGET)
 data.raw.dummy<-write.csv(data.dummified,file="data.dummified.csv")
 data.dummified<-make.names(names(data.dummified),unique = TRUE)
 
-
-
-
-
-
 ```
 
 ```{r}
 my_num_data <- data[, sapply(data, is.numeric)]
 cor(my_num_data, use = "complete.obs", method = "pearson")
-
-
 ```
 
 Logistic Regression Modeling

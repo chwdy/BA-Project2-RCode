@@ -350,9 +350,13 @@ confusionMatrix(table(response,testData$TARGET))
 
 
 
+
 ```
 
 ```{r}
+
+my_num_data <- data[, sapply(data, is.numeric)]
+cor(my_num_data, use = "complete.obs", method = "pearson")
 
 ```
 

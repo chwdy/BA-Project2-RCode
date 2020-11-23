@@ -422,6 +422,18 @@ my_num_data <- data[, sapply(data, is.numeric)]
 cor(my_num_data, use = "complete.obs", method = "pearson")
 ```
 
+```{r}
+data_pca<-data.dummified.logistic
+#sapply(data_pca, class)
+std_data<-scale(data_pca[3:244])
+rownames(std_data)=data[[1]]
 
+class(std_data)
+std_data=as.data.frame(std_data)
+class(std_data)
+
+std_data_pca=princomp(std_data,cor=TRUE)
+summary(df.pr,loadings=TRUE)
+```
 
 

@@ -19,7 +19,6 @@ library(caret)
 ## 1.1 Load Data
 
 ```{r}
-
 data<- read.csv("application_train.csv",header = T)
 score_data<-read.csv("applications_to_score.csv",header = T)
 dataLogisticModel<-data
@@ -37,14 +36,14 @@ prop.table(table(data$TARGET))
 barplot(table(data$TARGET))
 
 #CHECK DATA QUALITY 
-checkDataQuality(data=data, 
-                 out.file.num ="dq_loans_num.csv", 
-                 out.file.cat= "dq_loans_cat.csv")
-dq_num<-read.csv("dq_loans_cat.csv")
-View(dq_num)
-
-dq_cat<-read.csv("dq_loans_cat.csv")
-View(dq_cat)
+# checkDataQuality(data=data, 
+#                  out.file.num ="dq_loans_num.csv", 
+#                  out.file.cat= "dq_loans_cat.csv")
+# dq_num<-read.csv("dq_loans_cat.csv")
+# View(dq_num)
+# 
+# dq_cat<-read.csv("dq_loans_cat.csv")
+# View(dq_cat)
 ```
 
 
@@ -408,6 +407,9 @@ data.dummified.logistic <- as.data.frame(predict(dataDummyLogistic,dataLogisticM
 data.dummified.logistic$TARGET <- as.factor(data.dummified.logistic$TARGET)
 data.raw.dummy<-write.csv(data.dummified.logistic,file="data.dummified.logistic.csv")
 
+#Fixing dummified variables' names
+names(data.dummified.logistic)<-make.names(names(data.dummified.logistic),unique = TRUE)
+
 ##Dummification of categorical variables tree model
 
 data$TARGET<-as.numeric(data$TARGET)
@@ -415,6 +417,7 @@ dataDummy <- dummyVars("~.",data=data, fullRank=F)
 data.dummified <- as.data.frame(predict(dataDummy,data))
 data.dummified$TARGET <- as.factor(data.dummified$TARGET)
 data.raw.dummy<-write.csv(data.dummified,file="data.dummified.csv")
+data.dummified<-make.names(names(data.dummified),unique = TRUE)
 ```
 
 ```{r}
@@ -436,7 +439,7 @@ testData  <- data.dummified.logistic[-trainingRowIndex, ]   # test data
 #Model
 model <- as.formula(paste("TARGET~", paste(names(trainingData[-2]), 
                                            collapse="+")))
-target.lm <- glm(model, data=train.df, family = binomial(link = "logit"))  # build the model
+target.lm <- glm(model, data=trainingData, family = binomial(link = "logit"))  # build the model
 # Review diagnostic measures
 summary(target.lm)
 

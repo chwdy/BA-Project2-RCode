@@ -19,7 +19,7 @@ library(caret)
 ## 1.1 Load Data
 
 ```{r}
-setwd("/Users/kunyangque/Documents/NYUTandon/course/Business Analysis/BA_Assignment/Project2/data")
+setwd("~/Documents/NYU Fall 2020/BA/Project 2/Data")
 data<- read.csv("application_train.csv",header = T)
 score_data<-read.csv("applications_to_score.csv",header = T)
 dataLogisticModel<-data
@@ -339,7 +339,7 @@ testData  <- data.dummified.logistic[-trainingRowIndex, ]   # test data
 #Model
 model <- as.formula(paste("TARGET~", paste(names(trainingData[-2]), 
                                         collapse="+")))
-target.lm <- glm(model, data=train.df, family = binomial(link = "logit"))  # build the model
+target.lm <- glm(model, data=trainingData, family = binomial(link = "logit"))  # build the model
 # Review diagnostic measures
 summary(target.lm)
 
@@ -353,12 +353,7 @@ confusionMatrix(table(response,testData$TARGET))
 
 ```
 
-```{r}
 
-my_num_data <- data[, sapply(data, is.numeric)]
-cor(my_num_data, use = "complete.obs", method = "pearson")
-
-```
 
 
 

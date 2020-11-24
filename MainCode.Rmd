@@ -910,4 +910,101 @@ plot(gbmImpTuned, top=20)
 ```
 
 
+## 2.3 LGBM model setup,training& save
+
+```{r}
+
+temp1<-data
+
+
+
+#over sample
+library(ROSE)
+for ( i in colnames(temp1)){
+  if(!is.numeric(temp1[[i]])){
+    temp1[[i]]<-as.factor(temp1[[i]])
+  }
+}
+temp1 <- ROSE(TARGET~., data=temp1,N = 540000, seed=1)$data
+
+
+##model
+library(lightgbm)
+library(methods)
+
+Target <- temp1$TARGET
+temp1[,c('SK_ID_CURR','TARGET')] <- NULL
+
+train <- temp1[1:length(Target),]
+
+inTrain <- createDataPartition(Target, p=.8, list = F)
+
+tr <- train[inTrain,]
+va <- train[-inTrain,]
+tr_ta <- Target[inTrain]
+va_ta <- Target[-inTrain]
+
+lgb.train = lgb.Dataset(data.matrix(tr), label = tr_ta)
+lgb.valid = lgb.Dataset(data.matrix(va), label = va_ta)
+
+lgb.params<- list(objective = "binary",
+                  metric = "auc",
+                  num_leaves = 32,
+                  max_depth=8,
+                  num_threads = 12,
+                  min_data_in_leaf = 10,
+                  min_sum_hessian_in_leaf = 40,
+                  feature_fraction = 0.95,
+                  bagging_fraction = 0.87,
+                  bagging_freq = 0,
+                  lambda_l1 = 0.04, 
+                  lambda_l2 = 0.073,
+                  min_gain_to_split=0.02
+                  )
+
+lgb.model <- lgb.train(params = lgb.params,
+                       data = lgb.train,
+                       valids = list(val = lgb.valid),
+                       learning_rate = 0.02,
+                       nrounds = 3000,
+                       early_stopping_rounds = 200,
+                       eval_freq = 50
+                       )
+
+# Make prediction
+lgb_pred <- predict(lgb.model, data = data.matrix(temp1), n = lgb.model$best_iter)
+lgb_pred<-ifelse(lgb_pred>0.5,1,0)
+confusionMatrix(table(lgb_pred, Target))
+LGBImportance = lgb.importance(lgb.model, percentage = TRUE)
+lgb.importance(lgb.model, percentage = TRUE) %>% head(20) %>% print()
+varImportance <- data.frame(Variables = LGBImportance$Feature, 
+                            Importance = LGBImportance$Gain)
+# Create a rank variable based on importance
+rankImportance <- varImportance %>%
+  mutate(Rank = paste0('#',dense_rank(desc(Importance)))) %>%
+  head(30)
+rankImportancefull = rankImportance
+ggplot(rankImportance, aes(x = reorder(Variables, Importance), 
+                           y = Importance)) +
+  geom_bar(stat='identity',colour="white", fill = "#F1C40F") +
+  geom_text(aes(x = Variables, y = 0.1, label = Rank),
+            hjust=0, vjust=.5, size = 4, colour = 'black',
+            fontface = 'bold') +
+  labs(x = 'Variables', title = 'Relative Variable Importance') +
+  coord_flip() + 
+  theme_bw()
+
+##roc plot
+library(pROC)
+gbm.probs <- predict(lgb.model, data = data.matrix(full))
+gbm.plot<-plot(roc(Target,gbm.probs))
+
+
+##save model
+
+save(lgb.model,file = "lgbmModel.Rdata")
+
+```
+
+
 

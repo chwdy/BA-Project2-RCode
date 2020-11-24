@@ -832,8 +832,6 @@ plot(gbmImpTuned, top=20)
 
 ```
 
-## 2.3 Support Vector Machine
-
 
 
 

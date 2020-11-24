@@ -12,6 +12,11 @@ library(dataQualityR)
 library(magrittr)
 library(dplyr)
 library(caret)
+library(rpart)
+library(ROSE)
+library(corrplot)
+library(Hmisc)
+library(gbm)
 ```
 
 # Part I: Data Preprocessing
@@ -19,8 +24,19 @@ library(caret)
 ## 1.1 Load Data
 
 ```{r}
+
+
+data<- read.csv("application_train.csv",header = T)
+score_data<-read.csv("applications_to_score.csv",header = T)
+dataLogisticModel<-data
+
+data<- read.csv("application_train.csv",header = T)
+score_data<-read.csv("applications_to_score.csv",header = T)
+dataLogisticModel<-data
+
 data_origin<-read.csv("application_train.csv",header = T)
 score_data_origin<-read.csv("applications_to_score.csv",header = T)
+
 
 #external
 previous_data_origin<-read.csv("previous_application.csv",header = T)
@@ -139,7 +155,7 @@ dataLogisticModel$DAYS_EMPLOYED<- ifelse(dataLogisticModel$DAYS_EMPLOYED>0,0,dat
 #Creating a flag column for them
 data$DAYS_EMPLOYED_POSITIVE<-ifelse(data$DAYS_EMPLOYED>0,1,0)
 #Replacing those values with Non numbers values
-data$DAYS_EMPLOYED<-ifelse(data$DAYS_EMPLOYED>0,NaN,data$DAYS_EMPLOYED)
+data$DAYS_EMPLOYED<-ifelse(data$DAYS_EMPLOYED>0,NA,data$DAYS_EMPLOYED)
 
 ```
 
@@ -558,6 +574,11 @@ data<-temp3
 #
 ```
 
+```{r}
+my_num_data <- data[, sapply(data, is.numeric)]
+corrMatrix<- cor(my_num_data, use = "complete.obs", method = "pearson")
+corrplot(corrMatrix)
+```
 
 ### using previous application data
 ```{r prevApp}
@@ -752,13 +773,10 @@ dataDummy <- dummyVars("~.",data=data, fullRank=F)
 data.dummified <- as.data.frame(predict(dataDummy,data))
 data.dummified$TARGET <- as.factor(data.dummified$TARGET)
 data.raw.dummy<-write.csv(data.dummified,file="data.dummified.csv")
-data.dummified<-make.names(names(data.dummified),unique = TRUE)
+names(data.dummified)<-make.names(names(data.dummified),unique = TRUE)
 ```
 
-```{r}
-my_num_data <- data[, sapply(data, is.numeric)]
-cor(my_num_data, use = "complete.obs", method = "pearson")
-```
+
 
 ==============================================pca=================================================
 
@@ -802,6 +820,7 @@ trainingRowIndex <- sample(1:nrow(data.dummified.logistic),(split)*nrow(data.dum
 trainingData <- data.dummified.logistic[trainingRowIndex, ]  # model training data
 testData  <- data.dummified.logistic[-trainingRowIndex, ]   # test data
 
+
 #Model
 model <- as.formula(paste("TARGET~", paste(names(trainingData[-2]), 
                                            collapse="+")))
@@ -813,8 +832,80 @@ summary(target.lm)
 response<- ifelse(predict(target.lm, testData, type = "response")>.5, 1, 0) 
 class(response)
 confusionMatrix(table(response,testData$TARGET))
-```
 
+
+##Balancing Data
+train.both<-ovun.sample(model, data = trainingData, method = "both", N= 22792)$data
+prop.table(table(train.both$TARGET))
+
+
+targetBalanced.lm<- glm(model, data=train.both, family = binomial(link = "logit"))  # build the model with the balanced data
+
+responseBalanced<- ifelse(predict(targetBalanced.lm, testData, type = "response")>.5,1,0)
+responseBalanced
+length(responseBalanced)
+table(responseBalanced,testData$TARGET)
+confusionMatrix(table(responseBalanced, testData$TARGET))
+
+
+```
+Random Forest with Boosting
+
+```{r}
+# Selecting data to train and test
+outcomeName <- "TARGET"
+predictorNames <- names(data.dummified)[names(data.dummified) != outcomeName]
+predictorNames
+
+set.seed(1234)  # setting seed to reproduce results of random sampling
+split<-(.80)
+trainingRowIndex <- sample(1:nrow(data.dummified),(split)*nrow(data.dummified))  # row indices for training data
+trainingDataGBM <- data.dummified[trainingRowIndex, ]  # model training data
+testDataGBM  <- data.dummified[-trainingRowIndex, ]   # test data
+
+
+gbm<-train(trainingDataGBM[,predictorNames],trainingDataGBM[,outcomeName],
+                 method='gbm',
+                trControl=trainControl())
+
+# # summarizing the model
+
+gbmImp<-varImp(gbm) #generates error.  run with line below
+plot(gbmImp, top=20)
+
+# measuring performance
+gbm.predict<-predict(gbm,testDataGBM[,predictorNames],type="raw")
+gbm.predict
+confusionMatrix(table(gbm.predict,testDataGBM$TARGET))
+
+# draw ROC curve and perform visual check for better accurancy/performacen
+library(pROC)
+gbm.probs <- predict(gbm,testDataGBM[-2],type="prob")
+gbm.plot<-plot(roc(testDataGBM$TARGET,gbm.probs[,2]))
+legend("bottomright", legend=c("rf", "gbm","logistic unbalanced","logistic balanced"), col=c("blue", "black","purple","greed"), lwd=2)
+
+#Model tuning
+fitControl.gbm <- trainControl(method = "cv",
+                           number = 20,
+                           sampling = "up")   # control parameters for training
+                                              # see help(trainControl) for details
+
+gbm.tuned<-train(trainingDataGBM [,predictorNames],trainingDataGBM[,outcomeName],   #model retraining
+           method='gbm',
+           trControl=fitControl.gbm)
+
+# measuring performance
+gbm.tuned.predict<-predict(gbm.tuned,testDataGBM[,predictorNames],type="raw")
+confusionMatrix(table(gbm.tuned.predict,testDataGBM$TARGET))
+gbm.tuned.probs <- predict(gbm.tuned,testDataGBM[,predictorNames],type="prob")
+gbmImpTuned<-varImp(gbm.tuned) #generates error.  run with line below
+plot(gbmImpTuned, top=20)
+
+# gbm.tuned.plot<-lines(roc(testDataGBM$TARGET,gbm.tuned.probs[,2]), col="red")
+# legend("bottomright", legend=c("rf", "gbm", "gbm.tuned"), col=c("blue", "black", "red"), lwd=2)
+
+
+```
 
 ```{r}
 std_data_pca=princomp(std_data,cor=TRUE)

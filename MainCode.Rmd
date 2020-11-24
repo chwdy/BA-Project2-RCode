@@ -22,6 +22,9 @@ library(psych)
 library(lightgbm)
 library(methods)
 library(pROC)
+library(e1071)
+library(foreach)
+library(doParallel)
 ```
 
 # Part I: Data Preprocessing
@@ -243,15 +246,16 @@ data<- subset(data, data$HOUR_APPR_PROCESS_START > (Q[1] - 1.5*iqr) & data$HOUR_
 dataLogisticModel<- subset(dataLogisticModel, dataLogisticModel$HOUR_APPR_PROCESS_START > (Q[1] - 1.5*iqr) & dataLogisticModel$HOUR_APPR_PROCESS_START < (Q[2]+1.5*iqr))
 ```
 
-
 ### Changing the ORGANIZATION_TYPE XNA variables to "Unknown"'
+
 ```{r}
 data$ORGANIZATION_TYPE[data$ORGANIZATION_TYPE=="XNA"]<- "Unknown"
 
 dataLogisticModel$ORGANIZATION_TYPE[dataLogisticModel$ORGANIZATION_TYPE=="XNA"]<- "Unknown"
 ```
 
-### data cleaning for building info
+### Data cleaning for building info
+
 ```{r new}
 # data cleaning
 
@@ -409,6 +413,7 @@ data<-temp2 ## tree data
 ```
 
 ### Drop column FLAG_MOBIL
+
 ```{r}
 data<-subset(data, select = -FLAG_MOBIL)
 dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_MOBIL)
@@ -731,6 +736,9 @@ save(model,file = "LogisticModel.Rdata")
 ## 2.2 Random Forest with Boosting
 
 ```{r}
+cl<-makeCluster(5)
+registerDoParallel(cl)
+
 # Selecting data to train and test
 outcomeName <- "TARGET"
 predictorNames <- names(data.dummified)[names(data.dummified) != outcomeName]
@@ -786,6 +794,7 @@ plot(gbmImpTuned, top=20)
 
 save(gbm,file = "gbmModel.Rdata")
 
+stopImplicitCluster()
 ```
 
 ## 2.3 LGBM model setup,training& save
@@ -880,7 +889,49 @@ save(lgb.model,file = "lgbmModel.Rdata")
 
 ## 2.4 Support Vector Machine
 
+### Applying k-Fold Cross Validation
 
+```{r}
+# Multi thread
+cl<-makeCluster(5)
+registerDoParallel(cl)
+
+# Create the folds we specify the target feature
+folds = createFolds(training_set$Purchased, k = 10)
+
+cv = lapply(folds, function(x) { 
+  # Separate the Training set into it's 10 pieces
+  training_fold = training_set[-x, ] # training fold =  training set minus (-) it's sub test fold
+  testing_fold = training_set[x, ] 
+  
+  # apply (train) the classifer on the training_fold
+  classifier = svm(formula = Purchased ~ .,
+                   data = training_fold,
+                   type = 'C-classification',
+                   kernel = 'radial')
+  
+  # calculate the predictions and cm and we equate the accuracy
+  y_pred = predict(classifier, newdata = test_fold[-3])
+  cm = table(test_fold[, 3], y_pred)
+  accuracy = (cm[1,1] + cm[2,2]) / (cm[1,1] + cm[2,2] + cm[1,2] + cm[2,1])
+  return(accuracy)
+})
+
+stopImplicitCluster()
+```
+
+### For CV we can see we have 10 folds/iterations each with slight variations of accuracy.
+
+```{r}
+knitr::include_graphics("CV.png")
+```
+
+### Calculate the mean of accuracy
+
+```{r}
+accuracy = mean(as.numeric(cv))
+accuracy
+```
 
 
 

@@ -17,6 +17,13 @@ library(ROSE)
 library(corrplot)
 library(Hmisc)
 library(gbm)
+
+library(ROSE)
+library(parallel)
+library(dplyr)
+library(psych)
+library(lightgbm)
+library(methods)
 library(pROC)
 ```
 
@@ -84,9 +91,18 @@ for (i in colnames(data)) {
 ### Reducing Data Set
 
 ```{r}
-index <- sample(1:nrow(data),(.1)*nrow(data))  # technique to reduce dataset
+Imbalance_handle="off"
+
+if(Imbalance_handle=="over"){
+
+data <- ovun.sample(TARGET~., data=data,N = 540000, seed=1, method="over")$data
+dataLogisticModel <- ovun.sample(TARGET~., data=dataLogisticModel,N = 540000, seed=1, method="over")$data
+}else if(Imbalance_handle=="under"){
+  index <- sample(1:nrow(data),(.1)*nrow(data))  # technique to reduce dataset
 data <- data [index, ]
 dataLogisticModel <- dataLogisticModel [index, ]
+}
+
 ```
 
 ## 1.3 Data Cleaning
@@ -181,6 +197,7 @@ dataLogisticModel$AMT_REQ_CREDIT_BUREAU<-dataLogisticModel$AMT_REQ_CREDIT_BUREAU
   dataLogisticModel$AMT_REQ_CREDIT_BUREAU_MON + 
   dataLogisticModel$AMT_REQ_CREDIT_BUREAU_QRT +
  dataLogisticModel$AMT_REQ_CREDIT_BUREAU_YEAR
+
 ```
 
 ```{r}
@@ -234,6 +251,7 @@ dataLogisticModel<- subset(dataLogisticModel, dataLogisticModel$HOUR_APPR_PROCES
 
 ```
 
+
 ### Changing the ORGANIZATION_TYPE XNA variables to "Unknown"'
 ```{r}
 data$ORGANIZATION_TYPE[data$ORGANIZATION_TYPE=="XNA"]<- "Unknown"
@@ -247,12 +265,13 @@ dataLogisticModel$ORGANIZATION_TYPE[dataLogisticModel$ORGANIZATION_TYPE=="XNA"]<
 
 temp<- data ##input
 ## removing avg & MEDI
-temp<-temp[,-which(names(temp) %in% c("APARTMENTS_AVG","BASEMENTAREA_AVG","YEARS_BEGINEXPLUATATION_AVG","YEARS_BUILD_AVG","COMMONAREA_AVG","ELEVATORS_AVG","ENTRANCES_AVG","FLOORSMAX_AVG","FLOORSMIN_AVG","LANDAREA_AVG","LIVINGAPARTMENTS_AVG","LIVINGAREA_AVG","NONLIVINGAPARTMENTS_AVG","NONLIVINGAREA_AVG","APARTMENTS_MEDI","BASEMENTAREA_MEDI","YEARS_BEGINEXPLUATATION_MEDI","YEARS_BUILD_MEDI","COMMONAREA_MEDI","ELEVATORS_MEDI","ENTRANCES_MEDI","FLOORSMAX_MEDI","FLOORSMIN_MEDI","LANDAREA_MEDI","LIVINGAPARTMENTS_MEDI","LIVINGAREA_MEDI","NONLIVINGAPARTMENTS_MEDI","NONLIVINGAREA_MEDI"))]
+remove_list<- c("APARTMENTS_AVG","BASEMENTAREA_AVG","YEARS_BEGINEXPLUATATION_AVG","YEARS_BUILD_AVG","COMMONAREA_AVG","ELEVATORS_AVG","ENTRANCES_AVG","FLOORSMAX_AVG","FLOORSMIN_AVG","LANDAREA_AVG","LIVINGAPARTMENTS_AVG","LIVINGAREA_AVG","NONLIVINGAPARTMENTS_AVG","NONLIVINGAREA_AVG","APARTMENTS_MEDI","BASEMENTAREA_MEDI","YEARS_BEGINEXPLUATATION_MEDI","YEARS_BUILD_MEDI","COMMONAREA_MEDI","ELEVATORS_MEDI","ENTRANCES_MEDI","FLOORSMAX_MEDI","FLOORSMIN_MEDI","LANDAREA_MEDI","LIVINGAPARTMENTS_MEDI","LIVINGAREA_MEDI","NONLIVINGAPARTMENTS_MEDI","NONLIVINGAREA_MEDI")
+temp<-temp[,-which(names(temp) %in%remove_list)]
 data<-temp ##output
 
 temp<- dataLogisticModel ##input
 ## removing avg & MEDI
-temp<-temp[,-which(names(temp) %in% c("APARTMENTS_AVG","BASEMENTAREA_AVG","YEARS_BEGINEXPLUATATION_AVG","YEARS_BUILD_AVG","COMMONAREA_AVG","ELEVATORS_AVG","ENTRANCES_AVG","FLOORSMAX_AVG","FLOORSMIN_AVG","LANDAREA_AVG","LIVINGAPARTMENTS_AVG","LIVINGAREA_AVG","NONLIVINGAPARTMENTS_AVG","NONLIVINGAREA_AVG","APARTMENTS_MEDI","BASEMENTAREA_MEDI","YEARS_BEGINEXPLUATATION_MEDI","YEARS_BUILD_MEDI","COMMONAREA_MEDI","ELEVATORS_MEDI","ENTRANCES_MEDI","FLOORSMAX_MEDI","FLOORSMIN_MEDI","LANDAREA_MEDI","LIVINGAPARTMENTS_MEDI","LIVINGAREA_MEDI","NONLIVINGAPARTMENTS_MEDI","NONLIVINGAREA_MEDI"))]
+temp<-temp[,-which(names(temp) %in% remove_list)]
 dataLogisticModel<-temp ##output
 ```
 
@@ -262,7 +281,7 @@ dataLogisticModel<-temp ##output
 # feature engineering
 temp1 <- dataLogisticModel ##linear data
 temp2 <- data ##tree data
-library(parallel)
+
 qrtEncode <- function(x,dat) {
   if (is.na(x)) {
     return("NA")
@@ -464,36 +483,6 @@ temp3<-data #tree
 #amt limit actual - the max credit bank arpoved
 #status - the last application status
 #
-library(dplyr)
-library(parallel)
-qrtEncode <- function(x,dat) {
-  if (is.na(x)) {
-    return("NA")
-  }
-    if (x < dat[1]) {
-      return("0-25%")
-    } 
-  if (x < dat[2]) {
-      return("25-50%")
-    } 
-  if (x < dat[3]) {
-      return("50-75%")
-    } 
-      return("75-100%")
-}
-ZeroEncode <- function(x, dat) {
-  if (is.na(x)) {
-    return("NA")
-  }
-  if (x == 0) {
-    return("ZERO")
-  }
-  return("OVER ZERO")
-}
-
-clus <- makeCluster(detectCores())
-clusterExport(clus,"qrtEncode")
-clusterExport(clus,"ZeroEncode")
 
 credit_merge<-aggregate(temp1[c("MONTHS_BALANCE")],by=temp1["SK_ID_CURR"],FUN = length)
 credit_merge$MAX_Month<-aggregate(temp1[c("MONTHS_BALANCE")],by=temp1["SK_ID_CURR"],FUN = max)[["MONTHS_BALANCE"]]
@@ -503,6 +492,10 @@ credit_merge<-credit_merge[,-which(names(credit_merge)=="MONTHS_BALANCE")]
 credit_merge$NAME_CONTRACT_STATUS<-ifelse(credit_merge$NAME_CONTRACT_STATUS%in%c("Active","Completed"),credit_merge$NAME_CONTRACT_STATUS,"Others")
 temp2<-left_join(temp2,credit_merge, by="SK_ID_CURR") 
 temp3<-left_join(temp3,credit_merge, by="SK_ID_CURR") 
+
+clus <- makeCluster(detectCores())
+clusterExport(clus,"qrtEncode")
+clusterExport(clus,"ZeroEncode")
 
 temp2$CREDIT_CARD_RECORD_COUNTE_FLAG <-  ifelse(is.na(temp2$CREDIT_CARD_RECORD_COUNT), 0, 1)#NA-0,else-1
 temp2$CREDIT_CARD_RECORD_COUNT<-ifelse(is.na(temp2$CREDIT_CARD_RECORD_COUNT), 0, temp2$CREDIT_CARD_RECORD_COUNT)
@@ -529,9 +522,11 @@ dataLogisticModel<-temp2
 data<-temp3
 ```
 
+
 ### Using previous application data
 
 ```{r prevApp}
+
 
 #input
 temp1<-previous_data
@@ -543,43 +538,14 @@ temp3<-data #tree
 #amt limit actual - the max credit bank arpoved
 #status - the last application status
 #
-library(dplyr)
-library(parallel)
-qrtEncode <- function(x,dat) {
-  if (is.na(x)) {
-    return("NA")
-  }
-    if (x < dat[1]) {
-      return("0-25%")
-    } 
-  if (x < dat[2]) {
-      return("25-50%")
-    } 
-  if (x < dat[3]) {
-      return("50-75%")
-    } 
-      return("75-100%")
-}
-ZeroEncode <- function(x, dat) {
-  if (is.na(x)) {
-    return("NA")
-  }
-  if (x == 0) {
-    return("ZERO")
-  }
-  return("OVER ZERO")
-}
-
-clus <- makeCluster(detectCores())
-clusterExport(clus,"qrtEncode")
-clusterExport(clus,"ZeroEncode")
-
 temp1<- subset(temp1,temp1$FLAG_LAST_APPL_PER_CONTRACT=="Y"&temp1$NFLAG_LAST_APPL_IN_DAY==1)
 
 preapp_merge<-aggregate(temp1[c("NAME_CONTRACT_TYPE")],by=temp1["SK_ID_CURR"],FUN = length)
 colnames(preapp_merge)<-c("SK_ID_CURR","PREV_RECORD_COUNT")
 
-
+clus <- makeCluster(detectCores())
+clusterExport(clus,"qrtEncode")
+clusterExport(clus,"ZeroEncode")
 
 #####Cash loans
 temp<-subset(temp1,temp1$NAME_CONTRACT_TYPE=="Cash loans")
@@ -714,14 +680,17 @@ corrplot(corrMatrix)
 ```{r}
 #Dummification of categorical variables logistic model
 
+WRTENABLE= F
 dataLogisticModel$TARGET<-as.numeric(dataLogisticModel$TARGET)
 dataDummyLogistic <- dummyVars("~.",data=dataLogisticModel, fullRank=F)
 data.dummified.logistic <- as.data.frame(predict(dataDummyLogistic,dataLogisticModel))
 data.dummified.logistic$TARGET <- as.factor(data.dummified.logistic$TARGET)
-data.raw.dummy<-write.csv(data.dummified.logistic,file="data.dummified.logistic.csv")
+if(WRTENABLE){
+  data.raw.dummy<-write.csv(data.dummified.logistic,file="data.dummified.logistic.csv") 
+}
 
-#Fixing dummified variables' names
-names(data.dummified.logistic)<-make.names(names(data.dummified.logistic),unique = TRUE)
+
+
 
 ##Dummification of categorical variables tree model
 
@@ -729,7 +698,12 @@ data$TARGET<-as.numeric(data$TARGET)
 dataDummy <- dummyVars("~.",data=data, fullRank=F)
 data.dummified <- as.data.frame(predict(dataDummy,data))
 data.dummified$TARGET <- as.factor(data.dummified$TARGET)
-data.raw.dummy<-write.csv(data.dummified,file="data.dummified.csv")
+
+if(WRTENABLE){
+  data.raw.dummy<-write.csv(data.dummified,file="data.dummified.csv")
+}
+#Fixing dummified variables' names
+names(data.dummified.logistic)<-make.names(names(data.dummified.logistic),unique = TRUE)
 names(data.dummified)<-make.names(names(data.dummified),unique = TRUE)
 ```
 
@@ -761,9 +735,11 @@ response<- ifelse(predict(target.lm, testData, type = "response")>.5, 1, 0)
 class(response)
 confusionMatrix(table(response,testData$TARGET))
 
+
 ##Balancing Data
 train.both<-ovun.sample(model, data = trainingData, method = "both", N= 22792)$data
 prop.table(table(train.both$TARGET))
+
 
 targetBalanced.lm<- glm(model, data=train.both, family = binomial(link = "logit"))  # build the model with the balanced data
 
@@ -773,8 +749,10 @@ length(responseBalanced)
 table(responseBalanced,testData$TARGET)
 confusionMatrix(table(responseBalanced, testData$TARGET))
 
-```
 
+save(model,file = "LogisticModel.Rdata")
+
+```
 ## 2.2 Random Forest with Boosting
 
 ```{r}
@@ -805,6 +783,8 @@ gbm.predict
 confusionMatrix(table(gbm.predict,testDataGBM$TARGET))
 
 # draw ROC curve and perform visual check for better accurancy/performacen
+
+
 gbm.probs <- predict(gbm,testDataGBM[-2],type="prob")
 gbm.plot<-plot(roc(testDataGBM$TARGET,gbm.probs[,2]))
 legend("bottomright", legend=c("rf", "gbm","logistic unbalanced","logistic balanced"), col=c("blue", "black","purple","green"), lwd=2)
@@ -829,14 +809,110 @@ plot(gbmImpTuned, top=20)
 # gbm.tuned.plot<-lines(roc(testDataGBM$TARGET,gbm.tuned.probs[,2]), col="red")
 # legend("bottomright", legend=c("rf", "gbm", "gbm.tuned"), col=c("blue", "black", "red"), lwd=2)
 
+save(gbm,file = "gbmModel.Rdata")
+
+```
+
+<<<<<<< HEAD
+=======
+
+## 2.3 LGBM model setup,training& save
+>>>>>>> master
+
+```{r}
+
+temp1<-data
+
+
+
+#over sample
+for ( i in colnames(temp1)){
+  if(!is.numeric(temp1[[i]])){
+    temp1[[i]]<-as.factor(temp1[[i]])
+  }
+}
+temp1 <- ROSE(TARGET~., data=temp1,N = 540000, seed=1)$data
+
+
+##model
+
+
+Target <- temp1$TARGET
+temp1[,c('SK_ID_CURR','TARGET')] <- NULL
+
+train <- temp1[1:length(Target),]
+
+inTrain <- createDataPartition(Target, p=.8, list = F)
+
+tr <- train[inTrain,]
+va <- train[-inTrain,]
+tr_ta <- Target[inTrain]
+va_ta <- Target[-inTrain]
+
+lgb.train = lgb.Dataset(data.matrix(tr), label = tr_ta)
+lgb.valid = lgb.Dataset(data.matrix(va), label = va_ta)
+
+lgb.params<- list(objective = "binary",
+                  metric = "auc",
+                  num_leaves = 32,
+                  max_depth=8,
+                  num_threads = detectCores(),
+                  min_data_in_leaf = 10,
+                  min_sum_hessian_in_leaf = 40,
+                  feature_fraction = 0.95,
+                  bagging_fraction = 0.87,
+                  bagging_freq = 0,
+                  lambda_l1 = 0.04, 
+                  lambda_l2 = 0.073,
+                  min_gain_to_split=0.02
+                  )
+
+lgb.model <- lgb.train(params = lgb.params,
+                       data = lgb.train,
+                       valids = list(val = lgb.valid),
+                       learning_rate = 0.02,
+                       nrounds = 3000,
+                       early_stopping_rounds = 200,
+                       eval_freq = 50
+                       )
+
+# Make prediction
+lgb_pred <- predict(lgb.model, data = data.matrix(temp1), n = lgb.model$best_iter)
+lgb_pred<-ifelse(lgb_pred>0.5,1,0)
+confusionMatrix(table(lgb_pred, Target))
+LGBImportance = lgb.importance(lgb.model, percentage = TRUE)
+lgb.importance(lgb.model, percentage = TRUE) %>% head(20) %>% print()
+varImportance <- data.frame(Variables = LGBImportance$Feature, 
+                            Importance = LGBImportance$Gain)
+# Create a rank variable based on importance
+rankImportance <- varImportance %>%
+  mutate(Rank = paste0('#',dense_rank(desc(Importance)))) %>%
+  head(30)
+rankImportancefull = rankImportance
+ggplot(rankImportance, aes(x = reorder(Variables, Importance), 
+                           y = Importance)) +
+  geom_bar(stat='identity',colour="white", fill = "#F1C40F") +
+  geom_text(aes(x = Variables, y = 0.1, label = Rank),
+            hjust=0, vjust=.5, size = 4, colour = 'black',
+            fontface = 'bold') +
+  labs(x = 'Variables', title = 'Relative Variable Importance') +
+  coord_flip() + 
+  theme_bw()
+
+##roc plot
+
+gbm.probs <- predict(lgb.model, data = data.matrix(full))
+gbm.plot<-plot(roc(Target,gbm.probs))
+
+
+##save model
+
+save(lgb.model,file = "lgbmModel.Rdata")
 
 ```
 
 
-
-
-
-
+## 2.4 Support Vector Machine
 
 
 

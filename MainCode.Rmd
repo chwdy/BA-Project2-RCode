@@ -12,6 +12,8 @@ library(dataQualityR)
 library(magrittr)
 library(dplyr)
 library(caret)
+library(rpart)
+library(ROSE)
 ```
 
 # Part I: Data Preprocessing
@@ -447,6 +449,13 @@ summary(target.lm)
 response<- ifelse(predict(target.lm, testData, type = "response")>.5, 1, 0) 
 class(response)
 confusionMatrix(table(response,testData$TARGET))
+
+##Balancing Data
+train.both<-ovun.sample(model, data = trainingData, method = "both", N= 297522)$data
+prop.table(table(train.both$TARGET))
+targetBalanced.lm<- glm(model, data=train.both, family = binomial(link = "logit"))  # build the model with the balanced data
+responseBalanced<- ifelse(predict(targetBalanced.lm, testData, type = "response")>.5, 1, 0) 
+
 ```
 
 

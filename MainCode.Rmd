@@ -19,15 +19,23 @@ library(caret)
 ## 1.1 Load Data
 
 ```{r}
-data<- read.csv("application_train.csv",header = T)
-score_data<-read.csv("applications_to_score.csv",header = T)
-dataLogisticModel<-data
+data_origin<-read.csv("application_train.csv",header = T)
+score_data_origin<-read.csv("applications_to_score.csv",header = T)
 
 #external
-previous_data<-read.csv("previous_application.csv",header = T)
-creditcard_data<- read.csv("credit_card_balance.csv",header = T)
-
+previous_data_origin<-read.csv("previous_application.csv",header = T)
+creditcard_data_origin<-read.csv("credit_card_balance.csv",header = T)
 ```
+
+```{r}
+data<-data_origin
+score_data<-data_origin
+dataLogisticModel<-data
+
+previous_data<-previous_data_origin
+creditcard_data<-creditcard_data_origin
+```
+
 ### Data Exploration
 ```{r}
 # review the "balance" of the positive class we are about to predict
@@ -45,7 +53,6 @@ barplot(table(data$TARGET))
 # dq_cat<-read.csv("dq_loans_cat.csv")
 # View(dq_cat)
 ```
-
 
 ## 1.2 Summary
 
@@ -67,6 +74,7 @@ for (i in colnames(data)) {
 }
 
 ```
+
 ### Reducing Data Set
 
 ```{r}
@@ -286,9 +294,6 @@ dataLogisticModel<-temp ##output
 ## feature engineering for building info
 ```{r warning=FALSE}
 # feature engineering
-
-
-
 temp1 <- dataLogisticModel ##linear data
 temp2 <- data ##tree data
 library(parallel)
@@ -388,12 +393,90 @@ temp1$NONLIVINGAREA_MODE<-ifelse(is.na(temp1$NONLIVINGAREA_MODE), 0, temp1$NONLI
 temp2$NONLIVINGAREA_MODE<-parLapply(clus,X=temp2$NONLIVINGAREA_MODE,fun=ZeroEncode,dat=quantile(temp2$NONLIVINGAREA_MODE, prob = c(0.25,0.5,0.75),na.rm = T))
 temp2$NONLIVINGAREA_MODE<-unlist(temp2$NONLIVINGAREA_MODE)
 
+# OWN_CAR_AGE
+temp1$OWN_CAR_AGE <-  ifelse(is.na(temp1$OWN_CAR_AGE), 0, 1)#NA-0,else-1
+temp1$OWN_CAR_AGE<-ifelse(is.na(temp1$OWN_CAR_AGE), 0, temp1$OWN_CAR_AGE)
+temp2$OWN_CAR_AGE<-parLapply(clus,X=temp2$OWN_CAR_AGE,fun=ZeroEncode,dat=quantile(temp2$OWN_CAR_AGE, prob = c(0.25,0.5,0.75),na.rm = T))
+temp2$OWN_CAR_AGE<-unlist(temp2$OWN_CAR_AGE)
+
+# EXT_SOURCE_2
+temp1$EXT_SOURCE_1 <-  ifelse(is.na(temp1$EXT_SOURCE_1), 0, 1)#NA-0,else-1
+temp1$EXT_SOURCE_1<-ifelse(is.na(temp1$EXT_SOURCE_1), 0, temp1$EXT_SOURCE_1)
+temp2$EXT_SOURCE_1<-parLapply(clus,X=temp2$EXT_SOURCE_1,fun=ZeroEncode,dat=quantile(temp2$EXT_SOURCE_1, prob = c(0.25,0.5,0.75),na.rm = T))
+temp2$EXT_SOURCE_1<-unlist(temp2$EXT_SOURCE_1)
+
+temp1$EXT_SOURCE_2 <-  ifelse(is.na(temp1$EXT_SOURCE_2), 0, 1)#NA-0,else-1
+temp1$EXT_SOURCE_2<-ifelse(is.na(temp1$EXT_SOURCE_2), 0, temp1$EXT_SOURCE_2)
+temp2$EXT_SOURCE_2<-parLapply(clus,X=temp2$EXT_SOURCE_2,fun=ZeroEncode,dat=quantile(temp2$EXT_SOURCE_2, prob = c(0.25,0.5,0.75),na.rm = T))
+temp2$EXT_SOURCE_2<-unlist(temp2$EXT_SOURCE_2)
+
+temp1$EXT_SOURCE_3 <-  ifelse(is.na(temp1$EXT_SOURCE_3), 0, 1)#NA-0,else-1
+temp1$EXT_SOURCE_3<-ifelse(is.na(temp1$EXT_SOURCE_3), 0, temp1$EXT_SOURCE_2)
+temp2$EXT_SOURCE_3<-parLapply(clus,X=temp2$EXT_SOURCE_3,fun=ZeroEncode,dat=quantile(temp2$EXT_SOURCE_3, prob = c(0.25,0.5,0.75),na.rm = T))
+temp2$EXT_SOURCE_3<-unlist(temp2$EXT_SOURCE_3)
+
+temp1$TOTALAREA_MODE <-  ifelse(is.na(temp1$TOTALAREA_MODE), 0, 1)#NA-0,else-1
+temp1$TOTALAREA_MODE<-ifelse(is.na(temp1$TOTALAREA_MODE), 0, temp1$TOTALAREA_MODE)
+temp2$TOTALAREA_MODE<-parLapply(clus,X=temp2$TOTALAREA_MODE,fun=ZeroEncode,dat=quantile(temp2$TOTALAREA_MODE, prob = c(0.25,0.5,0.75),na.rm = T))
+temp2$TOTALAREA_MODE<-unlist(temp2$TOTALAREA_MODE)
+
 stopCluster(clus)
 #output
 dataLogisticModel<-temp1 ## linear data
 data<-temp2 ## tree data
+```
 
+### Drop column FLAG_MOBIL
+```{r}
+data<-subset(data, select = -FLAG_MOBIL)
+dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_MOBIL)
+```
 
+### Deal with column FLAG_DOCUMENT
+
+```{r}
+# Remove outliers
+data<-subset(data, FLAG_DOCUMENT_2 == 0)
+data<-subset(data, FLAG_DOCUMENT_4 == 0)
+data<-subset(data, FLAG_DOCUMENT_7 == 0)
+data<-subset(data, FLAG_DOCUMENT_10 == 0)
+data<-subset(data, FLAG_DOCUMENT_12 == 0)
+data<-subset(data, FLAG_DOCUMENT_17 == 0)
+data<-subset(data, FLAG_DOCUMENT_19 == 0)
+data<-subset(data, FLAG_DOCUMENT_20 == 0)
+data<-subset(data, FLAG_DOCUMENT_21 == 0)
+
+dataLogisticModel<-subset(dataLogisticModel, FLAG_DOCUMENT_2 == 0)
+dataLogisticModel<-subset(dataLogisticModel, FLAG_DOCUMENT_4 == 0)
+dataLogisticModel<-subset(dataLogisticModel, FLAG_DOCUMENT_7 == 0)
+dataLogisticModel<-subset(dataLogisticModel, FLAG_DOCUMENT_10 == 0)
+dataLogisticModel<-subset(dataLogisticModel, FLAG_DOCUMENT_12 == 0)
+dataLogisticModel<-subset(dataLogisticModel, FLAG_DOCUMENT_17 == 0)
+dataLogisticModel<-subset(dataLogisticModel, FLAG_DOCUMENT_19 == 0)
+dataLogisticModel<-subset(dataLogisticModel, FLAG_DOCUMENT_20 == 0)
+dataLogisticModel<-subset(dataLogisticModel, FLAG_DOCUMENT_21 == 0)
+
+# Drop Column
+
+data<-subset(data, select = -FLAG_DOCUMENT_2)
+data<-subset(data, select = -FLAG_DOCUMENT_4)
+data<-subset(data, select = -FLAG_DOCUMENT_7)
+data<-subset(data, select = -FLAG_DOCUMENT_10)
+data<-subset(data, select = -FLAG_DOCUMENT_12)
+data<-subset(data, select = -FLAG_DOCUMENT_17)
+data<-subset(data, select = -FLAG_DOCUMENT_19)
+data<-subset(data, select = -FLAG_DOCUMENT_20)
+data<-subset(data, select = -FLAG_DOCUMENT_21)
+
+dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_DOCUMENT_2)
+dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_DOCUMENT_4)
+dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_DOCUMENT_7)
+dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_DOCUMENT_10)
+dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_DOCUMENT_12)
+dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_DOCUMENT_17)
+dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_DOCUMENT_19)
+dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_DOCUMENT_20)
+dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_DOCUMENT_21)
 ```
 
 ## using credit card data
@@ -677,6 +760,37 @@ my_num_data <- data[, sapply(data, is.numeric)]
 cor(my_num_data, use = "complete.obs", method = "pearson")
 ```
 
+==============================================pca=================================================
+
+
+
+```{r}
+data_pca<-data.dummified.logistic
+
+library(psych)
+data_pca<-data.matrix(data_pca)
+df.cor<-cor(data_pca[,-1])
+
+fa.parallel(data_pca[,-1], fa = "pc", n.iter = 100, show.legend = F, main = "Scree plot with parallel analysis")
+#sapply(data_pca, class)
+#std_data<-scale(data_pca[3:ncol(data_pca)])
+#rownames(std_data)=data[[1]]
+
+#std_data=as.data.frame(std_data)
+
+#std_data_pca=princomp(std_data,cor=TRUE)
+#summary(df.pr,loadings=TRUE)
+```
+
+```{r}
+library(psych)
+pc<-principal(data_pca[,-1], nfactors = 2, score = T, rotate = "varimax")
+summary(pc,loadings=TRUE)
+```
+
+==============================================pca=================================================
+
+
 ```{r}
 outcomeName <- "TARGET"
 predictorNames <- names(data.dummified.logistic)[names(data.dummified.logistic) != outcomeName]
@@ -705,6 +819,6 @@ confusionMatrix(table(response,testData$TARGET))
 ```{r}
 std_data_pca=princomp(std_data,cor=TRUE)
 summary(df.pr,loadings=TRUE)
-```
+
 
 

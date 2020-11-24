@@ -523,6 +523,10 @@ credit_merge$NAME_CONTRACT_STATUS<-ifelse(credit_merge$NAME_CONTRACT_STATUS%in%c
 temp2<-left_join(temp2,credit_merge, by="SK_ID_CURR") 
 temp3<-left_join(temp3,credit_merge, by="SK_ID_CURR") 
 
+clus <- makeCluster(detectCores())
+clusterExport(clus,"qrtEncode")
+clusterExport(clus,"ZeroEncode")
+
 temp2$CREDIT_CARD_RECORD_COUNTE_FLAG <-  ifelse(is.na(temp2$CREDIT_CARD_RECORD_COUNT), 0, 1)#NA-0,else-1
 temp2$CREDIT_CARD_RECORD_COUNT<-ifelse(is.na(temp2$CREDIT_CARD_RECORD_COUNT), 0, temp2$CREDIT_CARD_RECORD_COUNT)
 temp3$CREDIT_CARD_RECORD_COUNT <-parLapply(clus,X=temp3$CREDIT_CARD_RECORD_COUNT,fun=qrtEncode,dat=quantile(temp3$CREDIT_CARD_RECORD_COUNT, prob = c(0.25,0.5,0.75),na.rm = T))
@@ -549,7 +553,7 @@ data<-temp3
 #
 ```
 
-```{r}
+```{r fig.width=16}
 my_num_data <- data[, sapply(data, is.numeric)]
 corrMatrix<- cor(my_num_data, use = "complete.obs", method = "pearson")
 corrplot(corrMatrix)
@@ -573,7 +577,9 @@ temp1<- subset(temp1,temp1$FLAG_LAST_APPL_PER_CONTRACT=="Y"&temp1$NFLAG_LAST_APP
 preapp_merge<-aggregate(temp1[c("NAME_CONTRACT_TYPE")],by=temp1["SK_ID_CURR"],FUN = length)
 colnames(preapp_merge)<-c("SK_ID_CURR","PREV_RECORD_COUNT")
 
-
+clus <- makeCluster(detectCores())
+clusterExport(clus,"qrtEncode")
+clusterExport(clus,"ZeroEncode")
 
 #####Cash loans
 temp<-subset(temp1,temp1$NAME_CONTRACT_TYPE=="Cash loans")
@@ -897,7 +903,7 @@ lgb.params<- list(objective = "binary",
                   metric = "auc",
                   num_leaves = 32,
                   max_depth=8,
-                  num_threads = 12,
+                  num_threads = detectCores(),
                   min_data_in_leaf = 10,
                   min_sum_hessian_in_leaf = 40,
                   feature_fraction = 0.95,

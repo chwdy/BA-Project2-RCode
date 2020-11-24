@@ -24,19 +24,8 @@ library(gbm)
 ## 1.1 Load Data
 
 ```{r}
-
-
-data<- read.csv("application_train.csv",header = T)
-score_data<-read.csv("applications_to_score.csv",header = T)
-dataLogisticModel<-data
-
-data<- read.csv("application_train.csv",header = T)
-score_data<-read.csv("applications_to_score.csv",header = T)
-dataLogisticModel<-data
-
 data_origin<-read.csv("application_train.csv",header = T)
 score_data_origin<-read.csv("applications_to_score.csv",header = T)
-
 
 #external
 previous_data_origin<-read.csv("previous_application.csv",header = T)
@@ -275,9 +264,9 @@ dataLogisticModel<- subset(dataLogisticModel, dataLogisticModel$HOUR_APPR_PROCES
 ### Turning NA to averages for EXT_SOURCE_3
 ```{r}
 
-data$EXT_SOURCE_3[data$EXT_SOURCE_3=="NA"]<- 0.51
+#data$EXT_SOURCE_3[data$EXT_SOURCE_3=="NA"]<- 0.51
 
-dataLogisticModel$EXT_SOURCE_3[dataLogisticModel$EXT_SOURCE_3=="NA"]<- 0.51
+#dataLogisticModel$EXT_SOURCE_3[dataLogisticModel$EXT_SOURCE_3=="NA"]<- 0.51
 ```
 
 ### Changing the ORGANIZATION_TYPE XNA variables to "Unknown"'
@@ -409,6 +398,7 @@ temp1$NONLIVINGAREA_MODE<-ifelse(is.na(temp1$NONLIVINGAREA_MODE), 0, temp1$NONLI
 temp2$NONLIVINGAREA_MODE<-parLapply(clus,X=temp2$NONLIVINGAREA_MODE,fun=ZeroEncode,dat=quantile(temp2$NONLIVINGAREA_MODE, prob = c(0.25,0.5,0.75),na.rm = T))
 temp2$NONLIVINGAREA_MODE<-unlist(temp2$NONLIVINGAREA_MODE)
 
+table(temp1$OWN_CAR_AGE)
 # OWN_CAR_AGE
 temp1$OWN_CAR_AGE <-  ifelse(is.na(temp1$OWN_CAR_AGE), 0, 1)#NA-0,else-1
 temp1$OWN_CAR_AGE<-ifelse(is.na(temp1$OWN_CAR_AGE), 0, temp1$OWN_CAR_AGE)
@@ -428,7 +418,7 @@ temp2$EXT_SOURCE_2<-unlist(temp2$EXT_SOURCE_2)
 
 temp1$EXT_SOURCE_3 <-  ifelse(is.na(temp1$EXT_SOURCE_3), 0, 1)#NA-0,else-1
 temp1$EXT_SOURCE_3<-ifelse(is.na(temp1$EXT_SOURCE_3), 0, temp1$EXT_SOURCE_2)
-temp2$EXT_SOURCE_3<-parLapply(clus,X=temp2$EXT_SOURCE_3,fun=ZeroEncode,dat=quantile(temp2$EXT_SOURCE_3, prob = c(0.25,0.5,0.75),na.rm = T))
+temp2$EXT_SOURCE_3<-parLapply(clus,X=temp2$EXT_SOURCE_3,fun=qrtEncode,dat=quantile(temp2$EXT_SOURCE_3, prob = c(0.25,0.5,0.75),na.rm = T))
 temp2$EXT_SOURCE_3<-unlist(temp2$EXT_SOURCE_3)
 
 temp1$TOTALAREA_MODE <-  ifelse(is.na(temp1$TOTALAREA_MODE), 0, 1)#NA-0,else-1

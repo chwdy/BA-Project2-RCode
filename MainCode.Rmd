@@ -560,7 +560,7 @@ data<-temp3
 
 
 ### using previous application data
-```{r prevApp}
+```{r prevApp, warning=FALSE}
 
 #input
 temp1<-previous_data
@@ -736,14 +736,17 @@ data<-temp3 #tree
 ```{r}
 #Dummification of categorical variables logistic model
 
+WRTENABLE= F
 dataLogisticModel$TARGET<-as.numeric(dataLogisticModel$TARGET)
 dataDummyLogistic <- dummyVars("~.",data=dataLogisticModel, fullRank=F)
 data.dummified.logistic <- as.data.frame(predict(dataDummyLogistic,dataLogisticModel))
 data.dummified.logistic$TARGET <- as.factor(data.dummified.logistic$TARGET)
-data.raw.dummy<-write.csv(data.dummified.logistic,file="data.dummified.logistic.csv")
+if(WRTENABLE){
+  data.raw.dummy<-write.csv(data.dummified.logistic,file="data.dummified.logistic.csv") 
+}
 
-#Fixing dummified variables' names
-names(data.dummified.logistic)<-make.names(names(data.dummified.logistic),unique = TRUE)
+
+
 
 ##Dummification of categorical variables tree model
 
@@ -751,8 +754,12 @@ data$TARGET<-as.numeric(data$TARGET)
 dataDummy <- dummyVars("~.",data=data, fullRank=F)
 data.dummified <- as.data.frame(predict(dataDummy,data))
 data.dummified$TARGET <- as.factor(data.dummified$TARGET)
-data.raw.dummy<-write.csv(data.dummified,file="data.dummified.csv")
-data.dummified<-make.names(names(data.dummified),unique = TRUE)
+if(WRTENABLE){
+  data.raw.dummy<-write.csv(data.dummified,file="data.dummified.csv")
+}
+#Fixing dummified variables' names
+names(data.dummified.logistic)<-make.names(names(data.dummified.logistic),unique = TRUE)
+names(data.dummified)<-make.names(names(data.dummified),unique = TRUE)
 ```
 
 ```{r}
@@ -819,6 +826,5 @@ confusionMatrix(table(response,testData$TARGET))
 ```{r}
 std_data_pca=princomp(std_data,cor=TRUE)
 summary(df.pr,loadings=TRUE)
-
-
+```
 

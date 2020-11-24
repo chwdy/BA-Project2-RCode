@@ -17,6 +17,7 @@ library(ROSE)
 library(corrplot)
 library(Hmisc)
 library(gbm)
+library(pROC)
 ```
 
 # Part I: Data Preprocessing
@@ -148,21 +149,6 @@ data$DAYS_EMPLOYED<-ifelse(data$DAYS_EMPLOYED>0,NA,data$DAYS_EMPLOYED)
 
 ```
 
-### OWN_CAR_AGE NAs are because the person does not own a car and that's why we do not have info about the age of th car, leaving the NAs since they make sense. Code below that proves it.
-
-```{r}
-# for ( i in colnames(data)) {
-#   if (data$FLAG_OWN_CAR=='N'&&!is.na(data$OWN_CAR_AGE)) {
-#     loansNAswithoutcar=1+loansNAswithoutcar;
-#   } else {
-#     if (data$FLAG_OWN_CAR=='Y'&&is.na(data$OWN_CAR_AGE)) {
-#       loansNAWithCar=1+loansNAWithCar
-#     }
-#   }
-# }
-# loansNAswithoutcar
-```
-
 ### Removing outliers from OBS_30_CNT_SOCIAL_CIRCLE, DEF_30_CNT_SOCIAL_CIRCLE, OBS_60_CNT_SOCIAL_CIRCLE, DEF_60_CNT_SOCIAL_CIRCLE
 
 ```{r}
@@ -195,9 +181,6 @@ dataLogisticModel$AMT_REQ_CREDIT_BUREAU<-dataLogisticModel$AMT_REQ_CREDIT_BUREAU
   dataLogisticModel$AMT_REQ_CREDIT_BUREAU_MON + 
   dataLogisticModel$AMT_REQ_CREDIT_BUREAU_QRT +
  dataLogisticModel$AMT_REQ_CREDIT_BUREAU_YEAR
-
-# dataLogisticModel<-mutate(dataLogisticModel, AMT_REQ_CREDIT_BUREAU=if_else(is.na(dataLogisticModel$AMT_REQ_CREDIT_BUREAU), 0, if_else(AMT_REQ_CREDIT_BUREAU >= 0 & AMT_REQ_CREDIT_BUREAU < 2, 1, if_else(AMT_REQ_CREDIT_BUREAU >= 2 & AMT_REQ_CREDIT_BUREAU < 4, 2, 3))))
-
 ```
 
 ```{r}
@@ -217,16 +200,13 @@ dataLogisticModel<-subset(dataLogisticModel, select = -AMT_REQ_CREDIT_BUREAU_QRT
 dataLogisticModel<-subset(dataLogisticModel, select = -AMT_REQ_CREDIT_BUREAU_YEAR)
 ```
 
-
 ### Deleting 1 NA from CNT_FAM_MEMBERS
 
 ```{r}
 data<-subset(data, !data$CNT_FAM_MEMBERS=="NA")
 
 dataLogisticModel<-subset(dataLogisticModel, !data$CNT_FAM_MEMBERS=="NA")
-#table(data$CNT_FAM_MEMBERS)
 ```
-
 
 ### Changing the OCCUPATION_TYPE blanks variables to "Others"'
 
@@ -237,8 +217,8 @@ dataLogisticModel$OCCUPATION_TYPE[dataLogisticModel$OCCUPATION_TYPE==""]<- "Othe
 
 ```
 
-
 #### Cleaning outliers for HOUR_APPR_PROCESS_START
+
 ```{r}
 Q <- quantile(data$HOUR_APPR_PROCESS_START, probs=c(.25, .75), na.rm = FALSE)
 
@@ -254,25 +234,12 @@ dataLogisticModel<- subset(dataLogisticModel, dataLogisticModel$HOUR_APPR_PROCES
 
 ```
 
-
-### Turning NA to averages for EXT_SOURCE_3
-```{r}
-
-#data$EXT_SOURCE_3[data$EXT_SOURCE_3=="NA"]<- 0.51
-
-#dataLogisticModel$EXT_SOURCE_3[dataLogisticModel$EXT_SOURCE_3=="NA"]<- 0.51
-```
-
 ### Changing the ORGANIZATION_TYPE XNA variables to "Unknown"'
 ```{r}
-
 data$ORGANIZATION_TYPE[data$ORGANIZATION_TYPE=="XNA"]<- "Unknown"
 
 dataLogisticModel$ORGANIZATION_TYPE[dataLogisticModel$ORGANIZATION_TYPE=="XNA"]<- "Unknown"
-
-#table(data$ORGANIZATION_TYPE)
 ```
-
 
 ### data cleaning for building info
 ```{r new}
@@ -287,10 +254,10 @@ temp<- dataLogisticModel ##input
 ## removing avg & MEDI
 temp<-temp[,-which(names(temp) %in% c("APARTMENTS_AVG","BASEMENTAREA_AVG","YEARS_BEGINEXPLUATATION_AVG","YEARS_BUILD_AVG","COMMONAREA_AVG","ELEVATORS_AVG","ENTRANCES_AVG","FLOORSMAX_AVG","FLOORSMIN_AVG","LANDAREA_AVG","LIVINGAPARTMENTS_AVG","LIVINGAREA_AVG","NONLIVINGAPARTMENTS_AVG","NONLIVINGAREA_AVG","APARTMENTS_MEDI","BASEMENTAREA_MEDI","YEARS_BEGINEXPLUATATION_MEDI","YEARS_BUILD_MEDI","COMMONAREA_MEDI","ELEVATORS_MEDI","ENTRANCES_MEDI","FLOORSMAX_MEDI","FLOORSMIN_MEDI","LANDAREA_MEDI","LIVINGAPARTMENTS_MEDI","LIVINGAREA_MEDI","NONLIVINGAPARTMENTS_MEDI","NONLIVINGAREA_MEDI"))]
 dataLogisticModel<-temp ##output
-
 ```
 
-## feature engineering for building info
+### Feature engineering for building info & External Source
+
 ```{r warning=FALSE}
 # feature engineering
 temp1 <- dataLogisticModel ##linear data
@@ -483,7 +450,8 @@ dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_DOCUMENT_20)
 dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_DOCUMENT_21)
 ```
 
-## using credit card data
+## Using credit card data
+
 ```{r creditcard}
 
 #input
@@ -559,16 +527,10 @@ temp3$NAME_CONTRACT_STATUS <-  ifelse(is.na(temp3$NAME_CONTRACT_STATUS), "NA", t
 #output
 dataLogisticModel<-temp2
 data<-temp3
-#
 ```
 
-```{r}
-my_num_data <- data[, sapply(data, is.numeric)]
-corrMatrix<- cor(my_num_data, use = "complete.obs", method = "pearson")
-corrplot(corrMatrix)
-```
+### Using previous application data
 
-### using previous application data
 ```{r prevApp}
 
 #input
@@ -741,7 +703,14 @@ data<-temp3 #tree
 
 ```
 
+```{r}
+my_num_data <- data[, sapply(data, is.numeric)]
+corrMatrix<- cor(my_num_data, use = "complete.obs", method = "pearson")
+corrplot(corrMatrix)
+```
+
 ## 1.4 Encoding Categorical Variables
+
 ```{r}
 #Dummification of categorical variables logistic model
 
@@ -792,11 +761,9 @@ response<- ifelse(predict(target.lm, testData, type = "response")>.5, 1, 0)
 class(response)
 confusionMatrix(table(response,testData$TARGET))
 
-
 ##Balancing Data
 train.both<-ovun.sample(model, data = trainingData, method = "both", N= 22792)$data
 prop.table(table(train.both$TARGET))
-
 
 targetBalanced.lm<- glm(model, data=train.both, family = binomial(link = "logit"))  # build the model with the balanced data
 
@@ -806,8 +773,8 @@ length(responseBalanced)
 table(responseBalanced,testData$TARGET)
 confusionMatrix(table(responseBalanced, testData$TARGET))
 
-
 ```
+
 ## 2.2 Random Forest with Boosting
 
 ```{r}
@@ -838,7 +805,6 @@ gbm.predict
 confusionMatrix(table(gbm.predict,testDataGBM$TARGET))
 
 # draw ROC curve and perform visual check for better accurancy/performacen
-library(pROC)
 gbm.probs <- predict(gbm,testDataGBM[-2],type="prob")
 gbm.plot<-plot(roc(testDataGBM$TARGET,gbm.probs[,2]))
 legend("bottomright", legend=c("rf", "gbm","logistic unbalanced","logistic balanced"), col=c("blue", "black","purple","green"), lwd=2)
@@ -865,6 +831,16 @@ plot(gbmImpTuned, top=20)
 
 
 ```
+
+## 2.3 Support Vector Machine
+
+
+
+
+
+
+
+
 
 
 

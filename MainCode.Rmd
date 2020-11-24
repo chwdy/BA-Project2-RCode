@@ -849,7 +849,7 @@ length(responseBalanced)
 table(responseBalanced,testData$TARGET)
 confusionMatrix(table(responseBalanced, testData$TARGET))
 
-
+save(model,file = "LogisticModel.Rdata")
 ```
 ## 2.2 Random Forest with Boosting
 
@@ -906,6 +906,7 @@ plot(gbmImpTuned, top=20)
 # gbm.tuned.plot<-lines(roc(testDataGBM$TARGET,gbm.tuned.probs[,2]), col="red")
 # legend("bottomright", legend=c("rf", "gbm", "gbm.tuned"), col=c("blue", "black", "red"), lwd=2)
 
+save(gbm,file = "gbmModel.Rdata")
 
 ```
 

@@ -17,10 +17,7 @@ library(ROSE)
 library(corrplot)
 library(Hmisc)
 library(gbm)
-
-library(ROSE)
 library(parallel)
-library(dplyr)
 library(psych)
 library(lightgbm)
 library(methods)
@@ -173,7 +170,6 @@ data = data[!data$DEF_30_CNT_SOCIAL_CIRCLE > 8,]
 data = data[!data$OBS_60_CNT_SOCIAL_CIRCLE > 47,]
 data = data[!data$DEF_60_CNT_SOCIAL_CIRCLE > 8,]
 
-
 dataLogisticModel = dataLogisticModel[!dataLogisticModel$OBS_30_CNT_SOCIAL_CIRCLE > 47,]
 dataLogisticModel = dataLogisticModel[!dataLogisticModel$DEF_30_CNT_SOCIAL_CIRCLE > 8,]
 dataLogisticModel = dataLogisticModel[!dataLogisticModel$OBS_60_CNT_SOCIAL_CIRCLE > 47,]
@@ -197,7 +193,6 @@ dataLogisticModel$AMT_REQ_CREDIT_BUREAU<-dataLogisticModel$AMT_REQ_CREDIT_BUREAU
   dataLogisticModel$AMT_REQ_CREDIT_BUREAU_MON + 
   dataLogisticModel$AMT_REQ_CREDIT_BUREAU_QRT +
  dataLogisticModel$AMT_REQ_CREDIT_BUREAU_YEAR
-
 ```
 
 ```{r}
@@ -228,10 +223,8 @@ dataLogisticModel<-subset(dataLogisticModel, !data$CNT_FAM_MEMBERS=="NA")
 ### Changing the OCCUPATION_TYPE blanks variables to "Others"'
 
 ```{r}
-
 data$OCCUPATION_TYPE[data$OCCUPATION_TYPE==""]<- "Others"
 dataLogisticModel$OCCUPATION_TYPE[dataLogisticModel$OCCUPATION_TYPE==""]<- "Others"
-
 ```
 
 #### Cleaning outliers for HOUR_APPR_PROCESS_START
@@ -248,7 +241,6 @@ low<- Q[1]-1.5*iqr # Lower Range
 data<- subset(data, data$HOUR_APPR_PROCESS_START > (Q[1] - 1.5*iqr) & data$HOUR_APPR_PROCESS_START < (Q[2]+1.5*iqr))
 
 dataLogisticModel<- subset(dataLogisticModel, dataLogisticModel$HOUR_APPR_PROCESS_START > (Q[1] - 1.5*iqr) & dataLogisticModel$HOUR_APPR_PROCESS_START < (Q[2]+1.5*iqr))
-
 ```
 
 
@@ -516,7 +508,6 @@ temp3$AMT_CREDIT_LIMIT_ACTUAL<-unlist(temp3$AMT_CREDIT_LIMIT_ACTUAL)
 temp2$NAME_CONTRACT_STATUS <-  ifelse(is.na(temp2$NAME_CONTRACT_STATUS), "NA", temp2$NAME_CONTRACT_STATUS)
 temp3$NAME_CONTRACT_STATUS <-  ifelse(is.na(temp3$NAME_CONTRACT_STATUS), "NA", temp3$NAME_CONTRACT_STATUS)
 
-
 #output
 dataLogisticModel<-temp2
 data<-temp3
@@ -526,8 +517,6 @@ data<-temp3
 ### Using previous application data
 
 ```{r prevApp}
-
-
 #input
 temp1<-previous_data
 temp2<-dataLogisticModel #logistic
@@ -579,7 +568,6 @@ preapp_merge<-left_join(preapp_merge,temp4, by="SK_ID_CURR")
 preapp_merge$CASH_LOANS_COUNT<-ifelse(is.na(preapp_merge$CASH_LOANS_COUNT),0,preapp_merge$CASH_LOANS_COUNT)
 ####
 
-
 ####Consumer loans
 temp<-subset(temp1,temp1$NAME_CONTRACT_TYPE=="Consumer loans")
 temp4<-aggregate(temp[c("NAME_CONTRACT_TYPE")],by=temp["SK_ID_CURR"],FUN = length)
@@ -610,7 +598,6 @@ colnames(temp4)<-c("SK_ID_CURR","COMSUMER_LOANS_COUNT","CONSUMER_LOANS_APPROVE_R
 temp4<-temp4[,1:3]
 preapp_merge<-left_join(preapp_merge,temp4, by="SK_ID_CURR") 
 preapp_merge$COMSUMER_LOANS_COUNT<-ifelse(is.na(preapp_merge$COMSUMER_LOANS_COUNT),0,preapp_merge$COMSUMER_LOANS_COUNT)
-
 
 ##Revolving loans
 temp<-subset(temp1,temp1$NAME_CONTRACT_TYPE=="Revolving loans")
@@ -647,16 +634,13 @@ temp4<-aggregate(temp1[c("CNT_PAYMENT")],by=temp1["SK_ID_CURR"],FUN = mean)
 colnames(temp4)<-c("SK_ID_CURR","CNT_PAYMENT_AVG")
 preapp_merge<-left_join(preapp_merge,temp4, by="SK_ID_CURR") 
 
-
 temp2<-left_join(temp2,preapp_merge, by="SK_ID_CURR") #linear
 temp3<-left_join(temp3,preapp_merge, by="SK_ID_CURR") ##tree
-
 
 for (i in c("PREV_RECORD_COUNT", "CASH_LOANS_COUNT","CASH_LOANS_APPROVE_RATE","COMSUMER_LOANS_COUNT" ,"CONSUMER_LOANS_APPROVE_RATE","REVOLVING_LOANS_COUNT","REVOLVING_LOANS_APPROVE_RATE")){
   temp2[[i]] <-ifelse(is.na(temp2[[i]]), 0, 1)#have-1,NA-0,overwrite
 temp3[[i]] <-ifelse(is.na(temp3[[i]]), 0, 1)#have-1,NA-0,overwrite
 }
-
 
 temp2$CNT_PAYMENT_AVG_FLAG <-  ifelse(is.na(temp2$CNT_PAYMENT_AVG), 0, 1)#NA-0,else-1
 temp2$CNT_PAYMENT_AVG<-ifelse(is.na(temp2$CNT_PAYMENT_AVG), 0, temp2$CNT_PAYMENT_AVG)
@@ -666,13 +650,6 @@ temp3$CNT_PAYMENT_AVG<-unlist(temp3$CNT_PAYMENT_AVG)
 
 dataLogisticModel<-temp2 #logistic
 data<-temp3 #tree 
-
-```
-
-```{r}
-my_num_data <- data[, sapply(data, is.numeric)]
-corrMatrix<- cor(my_num_data, use = "complete.obs", method = "pearson")
-corrplot(corrMatrix)
 ```
 
 ## 1.4 Encoding Categorical Variables
@@ -688,9 +665,6 @@ data.dummified.logistic$TARGET <- as.factor(data.dummified.logistic$TARGET)
 if(WRTENABLE){
   data.raw.dummy<-write.csv(data.dummified.logistic,file="data.dummified.logistic.csv") 
 }
-
-
-
 
 ##Dummification of categorical variables tree model
 
@@ -753,6 +727,7 @@ confusionMatrix(table(responseBalanced, testData$TARGET))
 save(model,file = "LogisticModel.Rdata")
 
 ```
+
 ## 2.2 Random Forest with Boosting
 
 ```{r}
@@ -813,17 +788,11 @@ save(gbm,file = "gbmModel.Rdata")
 
 ```
 
-<<<<<<< HEAD
-=======
-
 ## 2.3 LGBM model setup,training& save
->>>>>>> master
 
 ```{r}
 
 temp1<-data
-
-
 
 #over sample
 for ( i in colnames(temp1)){
@@ -832,7 +801,6 @@ for ( i in colnames(temp1)){
   }
 }
 temp1 <- ROSE(TARGET~., data=temp1,N = 540000, seed=1)$data
-
 
 ##model
 
@@ -908,9 +876,7 @@ gbm.plot<-plot(roc(Target,gbm.probs))
 ##save model
 
 save(lgb.model,file = "lgbmModel.Rdata")
-
 ```
-
 
 ## 2.4 Support Vector Machine
 

@@ -78,9 +78,18 @@ for (i in colnames(data)) {
 ### Reducing Data Set
 
 ```{r}
-index <- sample(1:nrow(data),(.1)*nrow(data))  # technique to reduce dataset
+Imbalance_handle="off"
+
+if(Imbalance_handle=="over"){
+  library(ROSE)
+data <- ovun.sample(TARGET~., data=data,N = 540000, seed=1, method="over")$data
+dataLogisticModel <- ovun.sample(TARGET~., data=dataLogisticModel,N = 540000, seed=1, method="over")$data
+}else if(Imbalance_handle=="under"){
+  index <- sample(1:nrow(data),(.1)*nrow(data))  # technique to reduce dataset
 data <- data [index, ]
 dataLogisticModel <- dataLogisticModel [index, ]
+}
+
 ```
 
 ## 1.3 Data Cleaning

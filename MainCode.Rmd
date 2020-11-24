@@ -24,19 +24,8 @@ library(gbm)
 ## 1.1 Load Data
 
 ```{r}
-
-
-data<- read.csv("application_train.csv",header = T)
-score_data<-read.csv("applications_to_score.csv",header = T)
-dataLogisticModel<-data
-
-data<- read.csv("application_train.csv",header = T)
-score_data<-read.csv("applications_to_score.csv",header = T)
-dataLogisticModel<-data
-
 data_origin<-read.csv("application_train.csv",header = T)
 score_data_origin<-read.csv("applications_to_score.csv",header = T)
-
 
 #external
 previous_data_origin<-read.csv("previous_application.csv",header = T)
@@ -200,9 +189,6 @@ data$AMT_REQ_CREDIT_BUREAU<-data$AMT_REQ_CREDIT_BUREAU_HOUR +
   data$AMT_REQ_CREDIT_BUREAU_QRT +
   data$AMT_REQ_CREDIT_BUREAU_YEAR
 
-print(paste("======== AMT_REQ_CREDIT_BUREAU ========="))
-print(summary(data$AMT_REQ_CREDIT_BUREAU))
-
 dataLogisticModel$AMT_REQ_CREDIT_BUREAU<-dataLogisticModel$AMT_REQ_CREDIT_BUREAU_HOUR + 
   dataLogisticModel$AMT_REQ_CREDIT_BUREAU_DAY +
   dataLogisticModel$AMT_REQ_CREDIT_BUREAU_WEEK +
@@ -210,10 +196,7 @@ dataLogisticModel$AMT_REQ_CREDIT_BUREAU<-dataLogisticModel$AMT_REQ_CREDIT_BUREAU
   dataLogisticModel$AMT_REQ_CREDIT_BUREAU_QRT +
  dataLogisticModel$AMT_REQ_CREDIT_BUREAU_YEAR
 
-
-dataLogisticModel<-mutate(dataLogisticModel, AMT_REQ_CREDIT_BUREAU=if_else(is.na(dataLogisticModel$AMT_REQ_CREDIT_BUREAU), 0, 
-                                     if_else(AMT_REQ_CREDIT_BUREAU >= 0 & AMT_REQ_CREDIT_BUREAU < 2, 1, 
-                                             if_else(AMT_REQ_CREDIT_BUREAU >= 2 & AMT_REQ_CREDIT_BUREAU < 4, 2, 3))))
+# dataLogisticModel<-mutate(dataLogisticModel, AMT_REQ_CREDIT_BUREAU=if_else(is.na(dataLogisticModel$AMT_REQ_CREDIT_BUREAU), 0, if_else(AMT_REQ_CREDIT_BUREAU >= 0 & AMT_REQ_CREDIT_BUREAU < 2, 1, if_else(AMT_REQ_CREDIT_BUREAU >= 2 & AMT_REQ_CREDIT_BUREAU < 4, 2, 3))))
 
 ```
 
@@ -275,9 +258,9 @@ dataLogisticModel<- subset(dataLogisticModel, dataLogisticModel$HOUR_APPR_PROCES
 ### Turning NA to averages for EXT_SOURCE_3
 ```{r}
 
-data$EXT_SOURCE_3[data$EXT_SOURCE_3=="NA"]<- 0.51
+#data$EXT_SOURCE_3[data$EXT_SOURCE_3=="NA"]<- 0.51
 
-dataLogisticModel$EXT_SOURCE_3[dataLogisticModel$EXT_SOURCE_3=="NA"]<- 0.51
+#dataLogisticModel$EXT_SOURCE_3[dataLogisticModel$EXT_SOURCE_3=="NA"]<- 0.51
 ```
 
 ### Changing the ORGANIZATION_TYPE XNA variables to "Unknown"'
@@ -403,7 +386,6 @@ temp2$LIVINGAREA_MODE<-unlist(temp2$LIVINGAREA_MODE)
 temp1$NONLIVINGAPARTMENTS_MODE <-ifelse(is.na(temp1$NONLIVINGAPARTMENTS_MODE), 0, 1)#have-1,NA-0,overwrite
 temp2$NONLIVINGAPARTMENTS_MODE <-ifelse(is.na(temp2$NONLIVINGAPARTMENTS_MODE), 0, 1)#have-1,NA-0,overwrite
 
-
 temp1$NONLIVINGAREA_MODE_FLAG <-  ifelse(is.na(temp1$NONLIVINGAREA_MODE), 0, 1)#NA-0,else-1
 temp1$NONLIVINGAREA_MODE<-ifelse(is.na(temp1$NONLIVINGAREA_MODE), 0, temp1$NONLIVINGAREA_MODE)
 temp2$NONLIVINGAREA_MODE<-parLapply(clus,X=temp2$NONLIVINGAREA_MODE,fun=ZeroEncode,dat=quantile(temp2$NONLIVINGAREA_MODE, prob = c(0.25,0.5,0.75),na.rm = T))
@@ -415,26 +397,32 @@ temp1$OWN_CAR_AGE<-ifelse(is.na(temp1$OWN_CAR_AGE), 0, temp1$OWN_CAR_AGE)
 temp2$OWN_CAR_AGE<-parLapply(clus,X=temp2$OWN_CAR_AGE,fun=ZeroEncode,dat=quantile(temp2$OWN_CAR_AGE, prob = c(0.25,0.5,0.75),na.rm = T))
 temp2$OWN_CAR_AGE<-unlist(temp2$OWN_CAR_AGE)
 
+
 # EXT_SOURCE_2
 temp1$EXT_SOURCE_1 <-  ifelse(is.na(temp1$EXT_SOURCE_1), 0, 1)#NA-0,else-1
 temp1$EXT_SOURCE_1<-ifelse(is.na(temp1$EXT_SOURCE_1), 0, temp1$EXT_SOURCE_1)
-temp2$EXT_SOURCE_1<-parLapply(clus,X=temp2$EXT_SOURCE_1,fun=ZeroEncode,dat=quantile(temp2$EXT_SOURCE_1, prob = c(0.25,0.5,0.75),na.rm = T))
+temp2$EXT_SOURCE_1<-parLapply(clus,X=temp2$EXT_SOURCE_1,fun=qrtEncode,dat=quantile(temp2$EXT_SOURCE_1, prob = c(0.25,0.5,0.75),na.rm = T))
 temp2$EXT_SOURCE_1<-unlist(temp2$EXT_SOURCE_1)
 
 temp1$EXT_SOURCE_2 <-  ifelse(is.na(temp1$EXT_SOURCE_2), 0, 1)#NA-0,else-1
 temp1$EXT_SOURCE_2<-ifelse(is.na(temp1$EXT_SOURCE_2), 0, temp1$EXT_SOURCE_2)
-temp2$EXT_SOURCE_2<-parLapply(clus,X=temp2$EXT_SOURCE_2,fun=ZeroEncode,dat=quantile(temp2$EXT_SOURCE_2, prob = c(0.25,0.5,0.75),na.rm = T))
+temp2$EXT_SOURCE_2<-parLapply(clus,X=temp2$EXT_SOURCE_2,fun=qrtEncode,dat=quantile(temp2$EXT_SOURCE_2, prob = c(0.25,0.5,0.75),na.rm = T))
 temp2$EXT_SOURCE_2<-unlist(temp2$EXT_SOURCE_2)
 
 temp1$EXT_SOURCE_3 <-  ifelse(is.na(temp1$EXT_SOURCE_3), 0, 1)#NA-0,else-1
 temp1$EXT_SOURCE_3<-ifelse(is.na(temp1$EXT_SOURCE_3), 0, temp1$EXT_SOURCE_2)
-temp2$EXT_SOURCE_3<-parLapply(clus,X=temp2$EXT_SOURCE_3,fun=ZeroEncode,dat=quantile(temp2$EXT_SOURCE_3, prob = c(0.25,0.5,0.75),na.rm = T))
+temp2$EXT_SOURCE_3<-parLapply(clus,X=temp2$EXT_SOURCE_3,fun=qrtEncode,dat=quantile(temp2$EXT_SOURCE_3, prob = c(0.25,0.5,0.75),na.rm = T))
 temp2$EXT_SOURCE_3<-unlist(temp2$EXT_SOURCE_3)
 
 temp1$TOTALAREA_MODE <-  ifelse(is.na(temp1$TOTALAREA_MODE), 0, 1)#NA-0,else-1
 temp1$TOTALAREA_MODE<-ifelse(is.na(temp1$TOTALAREA_MODE), 0, temp1$TOTALAREA_MODE)
 temp2$TOTALAREA_MODE<-parLapply(clus,X=temp2$TOTALAREA_MODE,fun=ZeroEncode,dat=quantile(temp2$TOTALAREA_MODE, prob = c(0.25,0.5,0.75),na.rm = T))
 temp2$TOTALAREA_MODE<-unlist(temp2$TOTALAREA_MODE)
+
+temp1$AMT_REQ_CREDIT_BUREAU <-ifelse(is.na(temp1$AMT_REQ_CREDIT_BUREAU), 0, 1)#NA-0,else-1
+temp1$AMT_REQ_CREDIT_BUREAU<-ifelse(is.na(temp1$AMT_REQ_CREDIT_BUREAU), 0, temp1$TOTALAREA_MODE)
+temp2$AMT_REQ_CREDIT_BUREAU<-parLapply(clus,X=temp2$AMT_REQ_CREDIT_BUREAU,fun=qrtEncode,dat=quantile(temp2$AMT_REQ_CREDIT_BUREAU, prob = c(0.25,0.5,0.75),na.rm = T))
+temp2$AMT_REQ_CREDIT_BUREAU<-unlist(temp2$AMT_REQ_CREDIT_BUREAU)
 
 stopCluster(clus)
 #output
@@ -450,7 +438,7 @@ dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_MOBIL)
 
 ### Deal with column FLAG_DOCUMENT
 
-```{r}
+```{r warning=FALSE}
 # Remove outliers
 data<-subset(data, FLAG_DOCUMENT_2 == 0)
 data<-subset(data, FLAG_DOCUMENT_4 == 0)
@@ -776,38 +764,9 @@ data.raw.dummy<-write.csv(data.dummified,file="data.dummified.csv")
 names(data.dummified)<-make.names(names(data.dummified),unique = TRUE)
 ```
 
+# PART II: Model
 
-
-==============================================pca=================================================
-
-
-
-```{r}
-data_pca<-data.dummified.logistic
-
-library(psych)
-data_pca<-data.matrix(data_pca)
-df.cor<-cor(data_pca[,-1])
-
-fa.parallel(data_pca[,-1], fa = "pc", n.iter = 100, show.legend = F, main = "Scree plot with parallel analysis")
-#sapply(data_pca, class)
-#std_data<-scale(data_pca[3:ncol(data_pca)])
-#rownames(std_data)=data[[1]]
-
-#std_data=as.data.frame(std_data)
-
-#std_data_pca=princomp(std_data,cor=TRUE)
-#summary(df.pr,loadings=TRUE)
-```
-
-```{r}
-library(psych)
-pc<-principal(data_pca[,-1], nfactors = 2, score = T, rotate = "varimax")
-summary(pc,loadings=TRUE)
-```
-
-==============================================pca=================================================
-
+## 2.1 Logistic Regression
 
 ```{r}
 outcomeName <- "TARGET"
@@ -849,7 +808,7 @@ confusionMatrix(table(responseBalanced, testData$TARGET))
 
 
 ```
-Random Forest with Boosting
+## 2.2 Random Forest with Boosting
 
 ```{r}
 # Selecting data to train and test
@@ -882,7 +841,7 @@ confusionMatrix(table(gbm.predict,testDataGBM$TARGET))
 library(pROC)
 gbm.probs <- predict(gbm,testDataGBM[-2],type="prob")
 gbm.plot<-plot(roc(testDataGBM$TARGET,gbm.probs[,2]))
-legend("bottomright", legend=c("rf", "gbm","logistic unbalanced","logistic balanced"), col=c("blue", "black","purple","greed"), lwd=2)
+legend("bottomright", legend=c("rf", "gbm","logistic unbalanced","logistic balanced"), col=c("blue", "black","purple","green"), lwd=2)
 
 #Model tuning
 fitControl.gbm <- trainControl(method = "cv",
@@ -906,10 +865,6 @@ plot(gbmImpTuned, top=20)
 
 
 ```
-
-```{r}
-std_data_pca=princomp(std_data,cor=TRUE)
-summary(df.pr,loadings=TRUE)
 
 
 

@@ -17,6 +17,13 @@ library(ROSE)
 library(corrplot)
 library(Hmisc)
 library(gbm)
+library(ROSE)
+library(parallel)
+library(dplyr)
+library(psych)
+library(lightgbm)
+library(methods)
+library(pROC)
 ```
 
 # Part I: Data Preprocessing
@@ -86,7 +93,7 @@ for (i in colnames(data)) {
 Imbalance_handle="off"
 
 if(Imbalance_handle=="over"){
-  library(ROSE)
+
 data <- ovun.sample(TARGET~., data=data,N = 540000, seed=1, method="over")$data
 dataLogisticModel <- ovun.sample(TARGET~., data=dataLogisticModel,N = 540000, seed=1, method="over")$data
 }else if(Imbalance_handle=="under"){
@@ -289,12 +296,13 @@ dataLogisticModel$ORGANIZATION_TYPE[dataLogisticModel$ORGANIZATION_TYPE=="XNA"]<
 
 temp<- data ##input
 ## removing avg & MEDI
-temp<-temp[,-which(names(temp) %in% c("APARTMENTS_AVG","BASEMENTAREA_AVG","YEARS_BEGINEXPLUATATION_AVG","YEARS_BUILD_AVG","COMMONAREA_AVG","ELEVATORS_AVG","ENTRANCES_AVG","FLOORSMAX_AVG","FLOORSMIN_AVG","LANDAREA_AVG","LIVINGAPARTMENTS_AVG","LIVINGAREA_AVG","NONLIVINGAPARTMENTS_AVG","NONLIVINGAREA_AVG","APARTMENTS_MEDI","BASEMENTAREA_MEDI","YEARS_BEGINEXPLUATATION_MEDI","YEARS_BUILD_MEDI","COMMONAREA_MEDI","ELEVATORS_MEDI","ENTRANCES_MEDI","FLOORSMAX_MEDI","FLOORSMIN_MEDI","LANDAREA_MEDI","LIVINGAPARTMENTS_MEDI","LIVINGAREA_MEDI","NONLIVINGAPARTMENTS_MEDI","NONLIVINGAREA_MEDI"))]
+remove_list<- c("APARTMENTS_AVG","BASEMENTAREA_AVG","YEARS_BEGINEXPLUATATION_AVG","YEARS_BUILD_AVG","COMMONAREA_AVG","ELEVATORS_AVG","ENTRANCES_AVG","FLOORSMAX_AVG","FLOORSMIN_AVG","LANDAREA_AVG","LIVINGAPARTMENTS_AVG","LIVINGAREA_AVG","NONLIVINGAPARTMENTS_AVG","NONLIVINGAREA_AVG","APARTMENTS_MEDI","BASEMENTAREA_MEDI","YEARS_BEGINEXPLUATATION_MEDI","YEARS_BUILD_MEDI","COMMONAREA_MEDI","ELEVATORS_MEDI","ENTRANCES_MEDI","FLOORSMAX_MEDI","FLOORSMIN_MEDI","LANDAREA_MEDI","LIVINGAPARTMENTS_MEDI","LIVINGAREA_MEDI","NONLIVINGAPARTMENTS_MEDI","NONLIVINGAREA_MEDI")
+temp<-temp[,-which(names(temp) %in%remove_list)]
 data<-temp ##output
 
 temp<- dataLogisticModel ##input
 ## removing avg & MEDI
-temp<-temp[,-which(names(temp) %in% c("APARTMENTS_AVG","BASEMENTAREA_AVG","YEARS_BEGINEXPLUATATION_AVG","YEARS_BUILD_AVG","COMMONAREA_AVG","ELEVATORS_AVG","ENTRANCES_AVG","FLOORSMAX_AVG","FLOORSMIN_AVG","LANDAREA_AVG","LIVINGAPARTMENTS_AVG","LIVINGAREA_AVG","NONLIVINGAPARTMENTS_AVG","NONLIVINGAREA_AVG","APARTMENTS_MEDI","BASEMENTAREA_MEDI","YEARS_BEGINEXPLUATATION_MEDI","YEARS_BUILD_MEDI","COMMONAREA_MEDI","ELEVATORS_MEDI","ENTRANCES_MEDI","FLOORSMAX_MEDI","FLOORSMIN_MEDI","LANDAREA_MEDI","LIVINGAPARTMENTS_MEDI","LIVINGAREA_MEDI","NONLIVINGAPARTMENTS_MEDI","NONLIVINGAREA_MEDI"))]
+temp<-temp[,-which(names(temp) %in% remove_list)]
 dataLogisticModel<-temp ##output
 
 ```
@@ -304,7 +312,7 @@ dataLogisticModel<-temp ##output
 # feature engineering
 temp1 <- dataLogisticModel ##linear data
 temp2 <- data ##tree data
-library(parallel)
+
 qrtEncode <- function(x,dat) {
   if (is.na(x)) {
     return("NA")
@@ -505,36 +513,6 @@ temp3<-data #tree
 #amt limit actual - the max credit bank arpoved
 #status - the last application status
 #
-library(dplyr)
-library(parallel)
-qrtEncode <- function(x,dat) {
-  if (is.na(x)) {
-    return("NA")
-  }
-    if (x < dat[1]) {
-      return("0-25%")
-    } 
-  if (x < dat[2]) {
-      return("25-50%")
-    } 
-  if (x < dat[3]) {
-      return("50-75%")
-    } 
-      return("75-100%")
-}
-ZeroEncode <- function(x, dat) {
-  if (is.na(x)) {
-    return("NA")
-  }
-  if (x == 0) {
-    return("ZERO")
-  }
-  return("OVER ZERO")
-}
-
-clus <- makeCluster(detectCores())
-clusterExport(clus,"qrtEncode")
-clusterExport(clus,"ZeroEncode")
 
 credit_merge<-aggregate(temp1[c("MONTHS_BALANCE")],by=temp1["SK_ID_CURR"],FUN = length)
 credit_merge$MAX_Month<-aggregate(temp1[c("MONTHS_BALANCE")],by=temp1["SK_ID_CURR"],FUN = max)[["MONTHS_BALANCE"]]
@@ -590,37 +568,6 @@ temp3<-data #tree
 #amt limit actual - the max credit bank arpoved
 #status - the last application status
 #
-library(dplyr)
-library(parallel)
-qrtEncode <- function(x,dat) {
-  if (is.na(x)) {
-    return("NA")
-  }
-    if (x < dat[1]) {
-      return("0-25%")
-    } 
-  if (x < dat[2]) {
-      return("25-50%")
-    } 
-  if (x < dat[3]) {
-      return("50-75%")
-    } 
-      return("75-100%")
-}
-ZeroEncode <- function(x, dat) {
-  if (is.na(x)) {
-    return("NA")
-  }
-  if (x == 0) {
-    return("ZERO")
-  }
-  return("OVER ZERO")
-}
-
-clus <- makeCluster(detectCores())
-clusterExport(clus,"qrtEncode")
-clusterExport(clus,"ZeroEncode")
-
 temp1<- subset(temp1,temp1$FLAG_LAST_APPL_PER_CONTRACT=="Y"&temp1$NFLAG_LAST_APPL_IN_DAY==1)
 
 preapp_merge<-aggregate(temp1[c("NAME_CONTRACT_TYPE")],by=temp1["SK_ID_CURR"],FUN = length)
@@ -786,7 +733,7 @@ names(data.dummified)<-make.names(names(data.dummified),unique = TRUE)
 ```{r}
 data_pca<-data.dummified.logistic
 
-library(psych)
+
 data_pca<-data.matrix(data_pca)
 df.cor<-cor(data_pca[,-1])
 
@@ -802,7 +749,7 @@ fa.parallel(data_pca[,-1], fa = "pc", n.iter = 100, show.legend = F, main = "Scr
 ```
 
 ```{r}
-library(psych)
+
 pc<-principal(data_pca[,-1], nfactors = 2, score = T, rotate = "varimax")
 summary(pc,loadings=TRUE)
 ```
@@ -881,7 +828,7 @@ gbm.predict
 confusionMatrix(table(gbm.predict,testDataGBM$TARGET))
 
 # draw ROC curve and perform visual check for better accurancy/performacen
-library(pROC)
+
 gbm.probs <- predict(gbm,testDataGBM[-2],type="prob")
 gbm.plot<-plot(roc(testDataGBM$TARGET,gbm.probs[,2]))
 legend("bottomright", legend=c("rf", "gbm","logistic unbalanced","logistic balanced"), col=c("blue", "black","purple","green"), lwd=2)
@@ -920,7 +867,6 @@ temp1<-data
 
 
 #over sample
-library(ROSE)
 for ( i in colnames(temp1)){
   if(!is.numeric(temp1[[i]])){
     temp1[[i]]<-as.factor(temp1[[i]])
@@ -930,8 +876,7 @@ temp1 <- ROSE(TARGET~., data=temp1,N = 540000, seed=1)$data
 
 
 ##model
-library(lightgbm)
-library(methods)
+
 
 Target <- temp1$TARGET
 temp1[,c('SK_ID_CURR','TARGET')] <- NULL
@@ -996,7 +941,7 @@ ggplot(rankImportance, aes(x = reorder(Variables, Importance),
   theme_bw()
 
 ##roc plot
-library(pROC)
+
 gbm.probs <- predict(lgb.model, data = data.matrix(full))
 gbm.plot<-plot(roc(Target,gbm.probs))
 

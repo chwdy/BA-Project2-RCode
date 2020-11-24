@@ -25,15 +25,33 @@ library(gbm)
 
 ```{r}
 
+
 data<- read.csv("application_train.csv",header = T)
 score_data<-read.csv("applications_to_score.csv",header = T)
 dataLogisticModel<-data
 
-#external
-previous_data<-read.csv("previous_application.csv",header = T)
-creditcard_data<- read.csv("credit_card_balance.csv",header = T)
+data<- read.csv("application_train.csv",header = T)
+score_data<-read.csv("applications_to_score.csv",header = T)
+dataLogisticModel<-data
 
+data_origin<-read.csv("application_train.csv",header = T)
+score_data_origin<-read.csv("applications_to_score.csv",header = T)
+
+
+#external
+previous_data_origin<-read.csv("previous_application.csv",header = T)
+creditcard_data_origin<-read.csv("credit_card_balance.csv",header = T)
 ```
+
+```{r}
+data<-data_origin
+score_data<-data_origin
+dataLogisticModel<-data
+
+previous_data<-previous_data_origin
+creditcard_data<-creditcard_data_origin
+```
+
 ### Data Exploration
 ```{r}
 # review the "balance" of the positive class we are about to predict
@@ -51,7 +69,6 @@ barplot(table(data$TARGET))
 # dq_cat<-read.csv("dq_loans_cat.csv")
 # View(dq_cat)
 ```
-
 
 ## 1.2 Summary
 
@@ -73,6 +90,7 @@ for (i in colnames(data)) {
 }
 
 ```
+
 ### Reducing Data Set
 
 ```{r}
@@ -292,9 +310,6 @@ dataLogisticModel<-temp ##output
 ## feature engineering for building info
 ```{r warning=FALSE}
 # feature engineering
-
-
-
 temp1 <- dataLogisticModel ##linear data
 temp2 <- data ##tree data
 library(parallel)
@@ -394,18 +409,348 @@ temp1$NONLIVINGAREA_MODE<-ifelse(is.na(temp1$NONLIVINGAREA_MODE), 0, temp1$NONLI
 temp2$NONLIVINGAREA_MODE<-parLapply(clus,X=temp2$NONLIVINGAREA_MODE,fun=ZeroEncode,dat=quantile(temp2$NONLIVINGAREA_MODE, prob = c(0.25,0.5,0.75),na.rm = T))
 temp2$NONLIVINGAREA_MODE<-unlist(temp2$NONLIVINGAREA_MODE)
 
+# OWN_CAR_AGE
+temp1$OWN_CAR_AGE <-  ifelse(is.na(temp1$OWN_CAR_AGE), 0, 1)#NA-0,else-1
+temp1$OWN_CAR_AGE<-ifelse(is.na(temp1$OWN_CAR_AGE), 0, temp1$OWN_CAR_AGE)
+temp2$OWN_CAR_AGE<-parLapply(clus,X=temp2$OWN_CAR_AGE,fun=ZeroEncode,dat=quantile(temp2$OWN_CAR_AGE, prob = c(0.25,0.5,0.75),na.rm = T))
+temp2$OWN_CAR_AGE<-unlist(temp2$OWN_CAR_AGE)
+
+# EXT_SOURCE_2
+temp1$EXT_SOURCE_1 <-  ifelse(is.na(temp1$EXT_SOURCE_1), 0, 1)#NA-0,else-1
+temp1$EXT_SOURCE_1<-ifelse(is.na(temp1$EXT_SOURCE_1), 0, temp1$EXT_SOURCE_1)
+temp2$EXT_SOURCE_1<-parLapply(clus,X=temp2$EXT_SOURCE_1,fun=ZeroEncode,dat=quantile(temp2$EXT_SOURCE_1, prob = c(0.25,0.5,0.75),na.rm = T))
+temp2$EXT_SOURCE_1<-unlist(temp2$EXT_SOURCE_1)
+
+temp1$EXT_SOURCE_2 <-  ifelse(is.na(temp1$EXT_SOURCE_2), 0, 1)#NA-0,else-1
+temp1$EXT_SOURCE_2<-ifelse(is.na(temp1$EXT_SOURCE_2), 0, temp1$EXT_SOURCE_2)
+temp2$EXT_SOURCE_2<-parLapply(clus,X=temp2$EXT_SOURCE_2,fun=ZeroEncode,dat=quantile(temp2$EXT_SOURCE_2, prob = c(0.25,0.5,0.75),na.rm = T))
+temp2$EXT_SOURCE_2<-unlist(temp2$EXT_SOURCE_2)
+
+temp1$EXT_SOURCE_3 <-  ifelse(is.na(temp1$EXT_SOURCE_3), 0, 1)#NA-0,else-1
+temp1$EXT_SOURCE_3<-ifelse(is.na(temp1$EXT_SOURCE_3), 0, temp1$EXT_SOURCE_2)
+temp2$EXT_SOURCE_3<-parLapply(clus,X=temp2$EXT_SOURCE_3,fun=ZeroEncode,dat=quantile(temp2$EXT_SOURCE_3, prob = c(0.25,0.5,0.75),na.rm = T))
+temp2$EXT_SOURCE_3<-unlist(temp2$EXT_SOURCE_3)
+
+temp1$TOTALAREA_MODE <-  ifelse(is.na(temp1$TOTALAREA_MODE), 0, 1)#NA-0,else-1
+temp1$TOTALAREA_MODE<-ifelse(is.na(temp1$TOTALAREA_MODE), 0, temp1$TOTALAREA_MODE)
+temp2$TOTALAREA_MODE<-parLapply(clus,X=temp2$TOTALAREA_MODE,fun=ZeroEncode,dat=quantile(temp2$TOTALAREA_MODE, prob = c(0.25,0.5,0.75),na.rm = T))
+temp2$TOTALAREA_MODE<-unlist(temp2$TOTALAREA_MODE)
+
 stopCluster(clus)
 #output
 dataLogisticModel<-temp1 ## linear data
 data<-temp2 ## tree data
+```
+
+### Drop column FLAG_MOBIL
+```{r}
+data<-subset(data, select = -FLAG_MOBIL)
+dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_MOBIL)
+```
+
+### Deal with column FLAG_DOCUMENT
+
+```{r}
+# Remove outliers
+data<-subset(data, FLAG_DOCUMENT_2 == 0)
+data<-subset(data, FLAG_DOCUMENT_4 == 0)
+data<-subset(data, FLAG_DOCUMENT_7 == 0)
+data<-subset(data, FLAG_DOCUMENT_10 == 0)
+data<-subset(data, FLAG_DOCUMENT_12 == 0)
+data<-subset(data, FLAG_DOCUMENT_17 == 0)
+data<-subset(data, FLAG_DOCUMENT_19 == 0)
+data<-subset(data, FLAG_DOCUMENT_20 == 0)
+data<-subset(data, FLAG_DOCUMENT_21 == 0)
+
+dataLogisticModel<-subset(dataLogisticModel, FLAG_DOCUMENT_2 == 0)
+dataLogisticModel<-subset(dataLogisticModel, FLAG_DOCUMENT_4 == 0)
+dataLogisticModel<-subset(dataLogisticModel, FLAG_DOCUMENT_7 == 0)
+dataLogisticModel<-subset(dataLogisticModel, FLAG_DOCUMENT_10 == 0)
+dataLogisticModel<-subset(dataLogisticModel, FLAG_DOCUMENT_12 == 0)
+dataLogisticModel<-subset(dataLogisticModel, FLAG_DOCUMENT_17 == 0)
+dataLogisticModel<-subset(dataLogisticModel, FLAG_DOCUMENT_19 == 0)
+dataLogisticModel<-subset(dataLogisticModel, FLAG_DOCUMENT_20 == 0)
+dataLogisticModel<-subset(dataLogisticModel, FLAG_DOCUMENT_21 == 0)
+
+# Drop Column
+
+data<-subset(data, select = -FLAG_DOCUMENT_2)
+data<-subset(data, select = -FLAG_DOCUMENT_4)
+data<-subset(data, select = -FLAG_DOCUMENT_7)
+data<-subset(data, select = -FLAG_DOCUMENT_10)
+data<-subset(data, select = -FLAG_DOCUMENT_12)
+data<-subset(data, select = -FLAG_DOCUMENT_17)
+data<-subset(data, select = -FLAG_DOCUMENT_19)
+data<-subset(data, select = -FLAG_DOCUMENT_20)
+data<-subset(data, select = -FLAG_DOCUMENT_21)
+
+dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_DOCUMENT_2)
+dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_DOCUMENT_4)
+dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_DOCUMENT_7)
+dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_DOCUMENT_10)
+dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_DOCUMENT_12)
+dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_DOCUMENT_17)
+dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_DOCUMENT_19)
+dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_DOCUMENT_20)
+dataLogisticModel<-subset(dataLogisticModel, select = -FLAG_DOCUMENT_21)
+```
+
+## using credit card data
+```{r creditcard}
+
+#input
+temp1<-creditcard_data
+temp2<- dataLogisticModel#logistic
+temp3<-data #tree 
+#note
+#month balance- length of record
+#amt balance - how many money need to pay the bank in the latest month
+#amt limit actual - the max credit bank arpoved
+#status - the last application status
+#
+library(dplyr)
+library(parallel)
+qrtEncode <- function(x,dat) {
+  if (is.na(x)) {
+    return("NA")
+  }
+    if (x < dat[1]) {
+      return("0-25%")
+    } 
+  if (x < dat[2]) {
+      return("25-50%")
+    } 
+  if (x < dat[3]) {
+      return("50-75%")
+    } 
+      return("75-100%")
+}
+ZeroEncode <- function(x, dat) {
+  if (is.na(x)) {
+    return("NA")
+  }
+  if (x == 0) {
+    return("ZERO")
+  }
+  return("OVER ZERO")
+}
+
+clus <- makeCluster(detectCores())
+clusterExport(clus,"qrtEncode")
+clusterExport(clus,"ZeroEncode")
+
+credit_merge<-aggregate(temp1[c("MONTHS_BALANCE")],by=temp1["SK_ID_CURR"],FUN = length)
+credit_merge$MAX_Month<-aggregate(temp1[c("MONTHS_BALANCE")],by=temp1["SK_ID_CURR"],FUN = max)[["MONTHS_BALANCE"]]
+colnames(credit_merge)<-c("SK_ID_CURR","CREDIT_CARD_RECORD_COUNT","MONTHS_BALANCE")
+credit_merge<-left_join(credit_merge,creditcard_data[c("SK_ID_CURR","MONTHS_BALANCE","AMT_BALANCE","AMT_CREDIT_LIMIT_ACTUAL","NAME_CONTRACT_STATUS")], by=c("SK_ID_CURR","MONTHS_BALANCE"))
+credit_merge<-credit_merge[,-which(names(credit_merge)=="MONTHS_BALANCE")]
+credit_merge$NAME_CONTRACT_STATUS<-ifelse(credit_merge$NAME_CONTRACT_STATUS%in%c("Active","Completed"),credit_merge$NAME_CONTRACT_STATUS,"Others")
+temp2<-left_join(temp2,credit_merge, by="SK_ID_CURR") 
+temp3<-left_join(temp3,credit_merge, by="SK_ID_CURR") 
+
+temp2$CREDIT_CARD_RECORD_COUNTE_FLAG <-  ifelse(is.na(temp2$CREDIT_CARD_RECORD_COUNT), 0, 1)#NA-0,else-1
+temp2$CREDIT_CARD_RECORD_COUNT<-ifelse(is.na(temp2$CREDIT_CARD_RECORD_COUNT), 0, temp2$CREDIT_CARD_RECORD_COUNT)
+temp3$CREDIT_CARD_RECORD_COUNT <-parLapply(clus,X=temp3$CREDIT_CARD_RECORD_COUNT,fun=qrtEncode,dat=quantile(temp3$CREDIT_CARD_RECORD_COUNT, prob = c(0.25,0.5,0.75),na.rm = T))
+temp3$CREDIT_CARD_RECORD_COUNT<-unlist(temp3$CREDIT_CARD_RECORD_COUNT)
+
+temp2$AMT_BALANCE_FLAG <-  ifelse(is.na(temp2$AMT_BALANCE), 0, 1)#NA-0,else-1
+temp2$AMT_BALANCE<-ifelse(is.na(temp2$AMT_BALANCE), 0, temp2$AMT_BALANCE)
+temp3$AMT_BALANCE <-parLapply(clus,X=temp3$AMT_BALANCE,fun=ZeroEncode,dat=quantile(temp3$AMT_BALANCE, prob = c(0.25,0.5,0.75),na.rm = T))
+temp3$AMT_BALANCE<-unlist(temp3$AMT_BALANCE)
+
+temp2$AMT_CREDIT_LIMIT_ACTUAL_FLAG <-  ifelse(is.na(temp2$AMT_CREDIT_LIMIT_ACTUAL), 0, 1)#NA-0,else-1
+temp2$AMT_CREDIT_LIMIT_ACTUAL<-ifelse(is.na(temp2$AMT_CREDIT_LIMIT_ACTUAL), 0, temp2$AMT_CREDIT_LIMIT_ACTUAL)
+temp3$AMT_CREDIT_LIMIT_ACTUAL <-parLapply(clus,X=temp3$AMT_CREDIT_LIMIT_ACTUAL,fun=qrtEncode,dat=quantile(temp3$AMT_CREDIT_LIMIT_ACTUAL, prob = c(0.25,0.5,0.75),na.rm = T))
+temp3$AMT_CREDIT_LIMIT_ACTUAL<-unlist(temp3$AMT_CREDIT_LIMIT_ACTUAL)
+
+#active status is cat data,fill NA
+temp2$NAME_CONTRACT_STATUS <-  ifelse(is.na(temp2$NAME_CONTRACT_STATUS), "NA", temp2$NAME_CONTRACT_STATUS)
+temp3$NAME_CONTRACT_STATUS <-  ifelse(is.na(temp3$NAME_CONTRACT_STATUS), "NA", temp3$NAME_CONTRACT_STATUS)
 
 
+#output
+dataLogisticModel<-temp2
+data<-temp3
+#
 ```
 
 ```{r}
 my_num_data <- data[, sapply(data, is.numeric)]
 corrMatrix<- cor(my_num_data, use = "complete.obs", method = "pearson")
 corrplot(corrMatrix)
+```
+
+### using previous application data
+```{r prevApp}
+
+#input
+temp1<-previous_data
+temp2<-dataLogisticModel #logistic
+temp3<-data #tree 
+#note
+#month balance- length of record
+#amt balance - how many money need to pay the bank in the latest month
+#amt limit actual - the max credit bank arpoved
+#status - the last application status
+#
+library(dplyr)
+library(parallel)
+qrtEncode <- function(x,dat) {
+  if (is.na(x)) {
+    return("NA")
+  }
+    if (x < dat[1]) {
+      return("0-25%")
+    } 
+  if (x < dat[2]) {
+      return("25-50%")
+    } 
+  if (x < dat[3]) {
+      return("50-75%")
+    } 
+      return("75-100%")
+}
+ZeroEncode <- function(x, dat) {
+  if (is.na(x)) {
+    return("NA")
+  }
+  if (x == 0) {
+    return("ZERO")
+  }
+  return("OVER ZERO")
+}
+
+clus <- makeCluster(detectCores())
+clusterExport(clus,"qrtEncode")
+clusterExport(clus,"ZeroEncode")
+
+temp1<- subset(temp1,temp1$FLAG_LAST_APPL_PER_CONTRACT=="Y"&temp1$NFLAG_LAST_APPL_IN_DAY==1)
+
+preapp_merge<-aggregate(temp1[c("NAME_CONTRACT_TYPE")],by=temp1["SK_ID_CURR"],FUN = length)
+colnames(preapp_merge)<-c("SK_ID_CURR","PREV_RECORD_COUNT")
+
+
+
+#####Cash loans
+temp<-subset(temp1,temp1$NAME_CONTRACT_TYPE=="Cash loans")
+temp4<-aggregate(temp[c("NAME_CONTRACT_TYPE")],by=temp["SK_ID_CURR"],FUN = length)
+
+temp5<-aggregate(temp[c("SK_ID_PREV")],by=temp[c("SK_ID_CURR","NAME_CONTRACT_STATUS")],FUN = length)
+#approved
+temp6<-subset(temp5,temp5$NAME_CONTRACT_STATUS=="Approved")
+temp6<-temp6[,-which(names(temp6)=="NAME_CONTRACT_STATUS")]
+colnames(temp6)<-c("SK_ID_CURR","APPROVED_COUNT")
+temp4<-left_join(temp4,temp6,by="SK_ID_CURR" )
+#refused
+temp6<-subset(temp5,temp5$NAME_CONTRACT_STATUS=="Refused")
+temp6<-temp6[,-which(names(temp6)=="NAME_CONTRACT_STATUS")]
+colnames(temp6)<-c("SK_ID_CURR","REFUSED_COUNT")
+temp4<-left_join(temp4,temp6,by="SK_ID_CURR" )
+#unused
+temp6<-subset(temp5,temp5$NAME_CONTRACT_STATUS=="Unused offer")
+temp6<-temp6[,-which(names(temp6)=="NAME_CONTRACT_STATUS")]
+colnames(temp6)<-c("SK_ID_CURR","UNUSED_COUNT")
+temp4<-left_join(temp4,temp6,by="SK_ID_CURR" )
+
+colnames(temp4)<-c("SK_ID_CURR","CASH_LOANS_COUNT","APPROVE_COUNT","REFUSED_COUNT","UNUSED_COUNT")
+temp4$CASH_LOANS_COUNT<-ifelse(is.na(temp4$APPROVE_COUNT),0,temp4$APPROVE_COUNT)+ifelse(is.na(temp4$REFUSED_COUNT),0,temp4$REFUSED_COUNT)+ifelse(is.na(temp4$UNUSED_COUNT),0,temp4$UNUSED_COUNT)
+temp4$APPROVE_COUNT<-ifelse(is.na(temp4$APPROVE_COUNT),0,temp4$APPROVE_COUNT)+ifelse(is.na(temp4$UNUSED_COUNT),0,temp4$UNUSED_COUNT)
+temp4$APPROVE_COUNT<-ifelse(is.na(temp4$APPROVE_COUNT),0,temp4$APPROVE_COUNT)/temp4$CASH_LOANS_COUNT
+temp4$APPROVE_COUNT<-ifelse(is.nan(temp4$APPROVE_COUNT),NA,temp4$APPROVE_COUNT)
+colnames(temp4)<-c("SK_ID_CURR","CASH_LOANS_COUNT","CASH_LOANS_APPROVE_RATE")
+temp4<-temp4[,1:3]
+preapp_merge<-left_join(preapp_merge,temp4, by="SK_ID_CURR") 
+preapp_merge$CASH_LOANS_COUNT<-ifelse(is.na(preapp_merge$CASH_LOANS_COUNT),0,preapp_merge$CASH_LOANS_COUNT)
+####
+
+
+####Consumer loans
+temp<-subset(temp1,temp1$NAME_CONTRACT_TYPE=="Consumer loans")
+temp4<-aggregate(temp[c("NAME_CONTRACT_TYPE")],by=temp["SK_ID_CURR"],FUN = length)
+
+temp5<-aggregate(temp[c("SK_ID_PREV")],by=temp[c("SK_ID_CURR","NAME_CONTRACT_STATUS")],FUN = length)
+#approved
+temp6<-subset(temp5,temp5$NAME_CONTRACT_STATUS=="Approved")
+temp6<-temp6[,-which(names(temp6)=="NAME_CONTRACT_STATUS")]
+colnames(temp6)<-c("SK_ID_CURR","APPROVED_COUNT")
+temp4<-left_join(temp4,temp6,by="SK_ID_CURR" )
+#refused
+temp6<-subset(temp5,temp5$NAME_CONTRACT_STATUS=="Refused")
+temp6<-temp6[,-which(names(temp6)=="NAME_CONTRACT_STATUS")]
+colnames(temp6)<-c("SK_ID_CURR","REFUSED_COUNT")
+temp4<-left_join(temp4,temp6,by="SK_ID_CURR" )
+#unused
+temp6<-subset(temp5,temp5$NAME_CONTRACT_STATUS=="Unused offer")
+temp6<-temp6[,-which(names(temp6)=="NAME_CONTRACT_STATUS")]
+colnames(temp6)<-c("SK_ID_CURR","UNUSED_COUNT")
+temp4<-left_join(temp4,temp6,by="SK_ID_CURR" )
+
+colnames(temp4)<-c("SK_ID_CURR","COMSUMER_LOANS_COUNT","APPROVE_COUNT","REFUSED_COUNT","UNUSED_COUNT")
+temp4$COMSUMER_LOANS_COUNT<-ifelse(is.na(temp4$APPROVE_COUNT),0,temp4$APPROVE_COUNT)+ifelse(is.na(temp4$REFUSED_COUNT),0,temp4$REFUSED_COUNT)+ifelse(is.na(temp4$UNUSED_COUNT),0,temp4$UNUSED_COUNT)
+temp4$APPROVE_COUNT<-ifelse(is.na(temp4$APPROVE_COUNT),0,temp4$APPROVE_COUNT)+ifelse(is.na(temp4$UNUSED_COUNT),0,temp4$UNUSED_COUNT)
+temp4$APPROVE_COUNT<-ifelse(is.na(temp4$APPROVE_COUNT),0,temp4$APPROVE_COUNT)/temp4$COMSUMER_LOANS_COUNT
+temp4$APPROVE_COUNT<-ifelse(is.nan(temp4$APPROVE_COUNT),NA,temp4$APPROVE_COUNT)
+colnames(temp4)<-c("SK_ID_CURR","COMSUMER_LOANS_COUNT","CONSUMER_LOANS_APPROVE_RATE")
+temp4<-temp4[,1:3]
+preapp_merge<-left_join(preapp_merge,temp4, by="SK_ID_CURR") 
+preapp_merge$COMSUMER_LOANS_COUNT<-ifelse(is.na(preapp_merge$COMSUMER_LOANS_COUNT),0,preapp_merge$COMSUMER_LOANS_COUNT)
+
+
+##Revolving loans
+temp<-subset(temp1,temp1$NAME_CONTRACT_TYPE=="Revolving loans")
+temp4<-aggregate(temp[c("NAME_CONTRACT_TYPE")],by=temp["SK_ID_CURR"],FUN = length)
+
+temp5<-aggregate(temp[c("SK_ID_PREV")],by=temp[c("SK_ID_CURR","NAME_CONTRACT_STATUS")],FUN = length)
+#approved
+temp6<-subset(temp5,temp5$NAME_CONTRACT_STATUS=="Approved")
+temp6<-temp6[,-which(names(temp6)=="NAME_CONTRACT_STATUS")]
+colnames(temp6)<-c("SK_ID_CURR","APPROVED_COUNT")
+temp4<-left_join(temp4,temp6,by="SK_ID_CURR" )
+#refused
+temp6<-subset(temp5,temp5$NAME_CONTRACT_STATUS=="Refused")
+temp6<-temp6[,-which(names(temp6)=="NAME_CONTRACT_STATUS")]
+colnames(temp6)<-c("SK_ID_CURR","REFUSED_COUNT")
+temp4<-left_join(temp4,temp6,by="SK_ID_CURR" )
+#unused
+temp6<-subset(temp5,temp5$NAME_CONTRACT_STATUS=="Unused offer")
+temp6<-temp6[,-which(names(temp6)=="NAME_CONTRACT_STATUS")]
+colnames(temp6)<-c("SK_ID_CURR","UNUSED_COUNT")
+temp4<-left_join(temp4,temp6,by="SK_ID_CURR" )
+
+colnames(temp4)<-c("SK_ID_CURR","REVOLVING_LOANS_COUNT","APPROVE_COUNT","REFUSED_COUNT","UNUSED_COUNT")
+temp4$REVOLVING_LOANS_COUNT<-ifelse(is.na(temp4$APPROVE_COUNT),0,temp4$APPROVE_COUNT)+ifelse(is.na(temp4$REFUSED_COUNT),0,temp4$REFUSED_COUNT)+ifelse(is.na(temp4$UNUSED_COUNT),0,temp4$UNUSED_COUNT)
+temp4$APPROVE_COUNT<-ifelse(is.na(temp4$APPROVE_COUNT),0,temp4$APPROVE_COUNT)+ifelse(is.na(temp4$UNUSED_COUNT),0,temp4$UNUSED_COUNT)
+temp4$APPROVE_COUNT<-ifelse(is.na(temp4$APPROVE_COUNT),0,temp4$APPROVE_COUNT)/temp4$REVOLVING_LOANS_COUNT
+temp4$APPROVE_COUNT<-ifelse(is.nan(temp4$APPROVE_COUNT),NA,temp4$APPROVE_COUNT)
+colnames(temp4)<-c("SK_ID_CURR","REVOLVING_LOANS_COUNT","REVOLVING_LOANS_APPROVE_RATE")
+temp4<-temp4[,1:3]
+preapp_merge<-left_join(preapp_merge,temp4, by="SK_ID_CURR") 
+preapp_merge$REVOLVING_LOANS_COUNT<-ifelse(is.na(preapp_merge$REVOLVING_LOANS_COUNT),0,preapp_merge$REVOLVING_LOANS_COUNT)
+
+temp4<-aggregate(temp1[c("CNT_PAYMENT")],by=temp1["SK_ID_CURR"],FUN = mean)
+colnames(temp4)<-c("SK_ID_CURR","CNT_PAYMENT_AVG")
+preapp_merge<-left_join(preapp_merge,temp4, by="SK_ID_CURR") 
+
+
+temp2<-left_join(temp2,preapp_merge, by="SK_ID_CURR") #linear
+temp3<-left_join(temp3,preapp_merge, by="SK_ID_CURR") ##tree
+
+
+for (i in c("PREV_RECORD_COUNT", "CASH_LOANS_COUNT","CASH_LOANS_APPROVE_RATE","COMSUMER_LOANS_COUNT" ,"CONSUMER_LOANS_APPROVE_RATE","REVOLVING_LOANS_COUNT","REVOLVING_LOANS_APPROVE_RATE")){
+  temp2[[i]] <-ifelse(is.na(temp2[[i]]), 0, 1)#have-1,NA-0,overwrite
+temp3[[i]] <-ifelse(is.na(temp3[[i]]), 0, 1)#have-1,NA-0,overwrite
+}
+
+
+temp2$CNT_PAYMENT_AVG_FLAG <-  ifelse(is.na(temp2$CNT_PAYMENT_AVG), 0, 1)#NA-0,else-1
+temp2$CNT_PAYMENT_AVG<-ifelse(is.na(temp2$CNT_PAYMENT_AVG), 0, temp2$CNT_PAYMENT_AVG)
+
+temp3$CNT_PAYMENT_AVG<-parLapply(clus,X=temp3$CNT_PAYMENT_AVG,fun=qrtEncode,dat=quantile(temp3$CNT_PAYMENT_AVG, prob = c(0.25,0.5,0.75),na.rm = T))
+temp3$CNT_PAYMENT_AVG<-unlist(temp3$CNT_PAYMENT_AVG)
+
+dataLogisticModel<-temp2 #logistic
+data<-temp3 #tree 
+
 ```
 
 ## 1.4 Encoding Categorical Variables
@@ -431,6 +776,37 @@ data.raw.dummy<-write.csv(data.dummified,file="data.dummified.csv")
 names(data.dummified)<-make.names(names(data.dummified),unique = TRUE)
 ```
 
+
+
+==============================================pca=================================================
+
+
+
+```{r}
+data_pca<-data.dummified.logistic
+
+library(psych)
+data_pca<-data.matrix(data_pca)
+df.cor<-cor(data_pca[,-1])
+
+fa.parallel(data_pca[,-1], fa = "pc", n.iter = 100, show.legend = F, main = "Scree plot with parallel analysis")
+#sapply(data_pca, class)
+#std_data<-scale(data_pca[3:ncol(data_pca)])
+#rownames(std_data)=data[[1]]
+
+#std_data=as.data.frame(std_data)
+
+#std_data_pca=princomp(std_data,cor=TRUE)
+#summary(df.pr,loadings=TRUE)
+```
+
+```{r}
+library(psych)
+pc<-principal(data_pca[,-1], nfactors = 2, score = T, rotate = "varimax")
+summary(pc,loadings=TRUE)
+```
+
+==============================================pca=================================================
 
 
 ```{r}
@@ -531,6 +907,9 @@ plot(gbmImpTuned, top=20)
 
 ```
 
+```{r}
+std_data_pca=princomp(std_data,cor=TRUE)
+summary(df.pr,loadings=TRUE)
 
 
 

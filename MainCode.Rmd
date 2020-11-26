@@ -840,6 +840,7 @@ for ( i in colnames(temp1)){
   }
 }
 temp1 <- ROSE(TARGET~., data=temp1,N = 540000, seed=1)$data
+temp1[is.na(temp1)] <- "NA"
 
 ##model
 
@@ -862,7 +863,7 @@ lgb.valid = lgb.Dataset(data.matrix(va), label = va_ta)
 lgb.params<- list(objective = "binary",
                   metric = "auc",
                   num_leaves = 32,
-                  max_depth=8,
+                  max_depth=12,
                   num_threads = detectCores(),
                   min_data_in_leaf = 10,
                   min_sum_hessian_in_leaf = 40,
@@ -873,14 +874,14 @@ lgb.params<- list(objective = "binary",
                   lambda_l2 = 0.073,
                   min_gain_to_split=0.02
                   )
-
 lgb.model <- lgb.train(params = lgb.params,
                        data = lgb.train,
                        valids = list(val = lgb.valid),
                        learning_rate = 0.02,
-                       nrounds = 3000,
+                       nrounds = 5000,
                        early_stopping_rounds = 200,
-                       eval_freq = 50
+                       eval_freq = 50,
+                       boosting="dart"
                        )
 
 # Make prediction
@@ -914,7 +915,8 @@ gbm.plot<-plot(roc(Target,gbm.probs))
 
 ##save model
 
-save(lgb.model,file = "lgbmModel.Rdata")
+lgb.save(lgb.model, file = "lgbmModel.Rdata")
+
 ```
 
 ## 2.4 Support Vector Machine

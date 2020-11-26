@@ -588,7 +588,8 @@ names(data.dummified)<-make.names(names(data.dummified),unique = TRUE)
 ```{r}
 
 ## load lgbm model
-lgb.model<-lgb.load("lgbmodel.model")
+library(lightgbm)
+lgb.model<-lgb.load(filename="lgbmModel.Rdata")
 
 temp1<-data
 
@@ -607,5 +608,5 @@ lgb_pred<-ifelse(lgb_pred>0.5,1,0)
 #write back
 read_csv("submission.csv") %>%  
   mutate(SK_ID_CURR = as.integer(SK_ID_CURR),TARGET = as.integer(lgb_pred))%>%select(1:2)%>%
-  write_csv("submission_Group5.csv")
+  write_csv("submission_Group5_aftersubmit.csv")
 ```

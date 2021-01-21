@@ -1,15 +1,14 @@
-# BA-Project2-RCode
+# BA-Project2-RCode: Home credit default risk project
 
-## Background
+## Aim:
+Predicted the customers’ probability of loan repayment on a joint dataset with loan history and credit card usage
 
-This project is a course project of class 8413, instructed by professor J.C. Bonilla
+## Key Points:
 
-Home credit is trying to identtify the default risk when its client apply for loans
+• Predicted the customers’ probability of loan repayment on a joint dataset with loan history and credit card usage
 
-## Key Points
+• Compared models’ performance and chose gradient boosting tree because of its high accuracy of 73%
 
-* clean up abnormal data
-* performed statistic summary on credit card history and loan applications
-* trained and compared the performance among linear model, logistic model, trees and LGBM
+• Balanced dataset by oversampling and figured the best parameters for the model by performing grid search
 
-
+• Visualized the feature engineering process using ggplot2 and demonstrated the result and analysis to our audience
